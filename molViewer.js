@@ -63,7 +63,7 @@
 								const line = el.slice( 0, 30 ).match( /.{1,10}/g ).concat( el.slice( 30 ).match( /.{1,3}/g ) );
 								return new Atom(
 										i,
-										[parseFloat( line[0] ),parseFloat( line[1] ), parseFloat( line[2] )],
+										{ x: parseFloat( line[0] ), y: parseFloat( line[1] ), z: parseFloat( line[2] ) },
 										line[3].trim(),
 										0
 									)
@@ -220,28 +220,37 @@
 
 			let molecule = OCL.Molecule.fromSmiles( smile );
 			addH && molecule.addImplicitHydrogens();
-			this.molfile = this.parse( molecule.toMolfile() );
+			this.molfile = molecule.toMolfile();
 
-			return this.Mol2D
+			return this
 
 		},
 
 		get3DFromSMILE: function( smile ){
 
 			this.ajaxRunning = true;
-			mol = this;
 			const event = new Event( "ajaxComplete" );
 
-			d3.request( "https://cactus.nci.nih.gov/chemical/structure/" + smile.replace( /\#/g, "%23" ).replace( /\[/g, "%5B" ).replace( /\]/g, "%5D" ) + "/file/xml?format=sdf&get3d=true")
-				.get( function( err, d ){
-					mol.molfile = d.responseXML.children[0].children[0].children[0].innerHTML;
-					mol.ajaxRunning = false
+			d3.xml( "https://cactus.nci.nih.gov/chemical/structure/" + smile.replace( /\#/g, "%23" ).replace( /\[/g, "%5B" ).replace( /\]/g, "%5D" ) + "/file/xml?format=sdf&get3d=true")
+				.then( ( d, err ) => {
+
+					this.molFile = d.children[0].children[0].children[0].innerHTML;
+					this.ajaxRunning = false
 					document.dispatchEvent( event )
-				})
+
+				} )
+
+		},
+
+		centre: function(){
+
+			const centre = this.atoms.reduce( ( acc, atom ) => { acc[0] += atom.pos.x; acc[1] += atom.pos.y; acc[2] += atom.pos.z; return acc }, [0,0,0] ).map( coord => coord/this.atoms.length );
+
+			this.atoms = this.atoms.map( atom => { atom.pos.x -= centre[0]; atom.pos.y -= centre[1]; atom.pos.z -= centre[2]; return atom } );
+
+			return this;
 
 		}
-
-
 
 	})
 
@@ -264,7 +273,29 @@
 
 			}
 
-		}
+		},
+
+		"bondLength": {
+
+		    get: function(){
+
+				return this.bonds.reduce( ( acc, bond ) =>
+					acc + Math.sqrt( Math.pow( bond.start.pos.x - bond.end.pos.x, 2 ) +
+									 Math.pow( bond.start.pos.y - bond.end.pos.y, 2 ) +
+									 Math.pow( bond.start.pos.z - bond.end.pos.z, 2 ) )
+					, 0 ) / this.bonds.length
+
+			},
+
+		    set: function( value ){
+
+				const scale = value/this.bondLength;
+
+				this.atoms = this.atoms.map( atom => { atom.pos.x *= scale; atom.pos.y *= scale; atom.pos.z *= scale; return atom } );
+
+			}
+
+		},
 
 	})
 
@@ -275,8 +306,12 @@
 
 		const self = this;
 
-		this.DOM = container;
-		this.dims = dims;
+		this._initialised = false;
+		this._bondScale = 50;
+		this._scaleBox = { width :0, height: 0 };
+		dims = dims !== undefined ? dims : [ 0, 0, container.getBoundingClientRect().width, container.getBoundingClientRect().height ];
+		this.dims = { x: dims[0], y: dims[1], width: dims[2], height: dims[3] };
+		this.Container = container;
 		this.molecule = molecule;
 
 		this.zoomable = params.zoomable || true;
@@ -299,7 +334,7 @@
 				cursor: all-scroll;
 			}
 
-			.bond > line, .bond_dbl > line, .bond_hash > line, .bond_trp > line {
+			.bondline, .bond_dbl > line, .bond_hash > line, .bond_trp > line {
 				stroke: black;
 				stroke-width: 1px;
 				pointer-events: none;
@@ -361,52 +396,107 @@
 				stroke: black;
 				stroke-width: 0.5px;
 			}
-		`,
+		`;
 
-		d3.select( "#molViewer2DCSS" ).empty() && d3.select( "head" ).append( "style" ).attr( "id", "molViewer2DCSS" ).html( this.stylesheet );
+		this._onWindowResize = function( ev ){
+
+			if( self.svg ){
+
+				const contBox = self._DOM.getBoundingClientRect();
+
+				self.dims.width = self._scaleBox.width * contBox.width;
+				self.dims.height = self._scaleBox.height * contBox.height;
+
+			}
+
+		}
 
 	};
 
 	/////2D canvas methods/////
 	Object.assign( Mol2D.prototype, {
 
+		init: function(){
+
+			if( this._initialised ) console.warn( "Molecule already initialised!" );
+
+			d3.select( "#molViewer2DCSS" ).empty() && d3.select( "head" ).append( "style" ).attr( "id", "molViewer2DCSS" ).html( this.stylesheet );
+			this._initialised = true;
+
+			return this
+
+		},
+
 		draw: function(){
+
+			if( this.svg ){ this.svg.remove(); this.svg = null };
+			const svg = this.Container.append( "svg" ).attr( "viewBox", this.dims.x + " " + this.dims.y + " " + this.dims.width + " " + this.dims.height ).attr( "id", "view2d" );
+			this.dims = svg.node().viewBox.baseVal;
+
+			this.svg = svg;
+			this.root = this.genMolecule();
+			this.svg.node().appendChild( this.root.node() );
+
+			this.zoomable && this.fitToScreen();
+
+			window.removeEventListener( "resize", this._onWindowResize );
+			window.addEventListener( "resize", this._onWindowResize );
+
+			return this
+
+		},
+
+		genMolecule: function(){
 
 			const atoms = this.molecule.atoms;
 			const bonds = this.molecule.bonds;
+			const bondScale = this.bondScale;
 
-			const svg = this.DOM.append( "svg" ).attr( "viewBox", this.dims.join( " " ) ).attr( "id", "view2d" );
-			const root = svg.append( "g" )
+			const root = d3.create( "svg:g" )
 					.attr( "id", "rootframe" )
 					.attr( "transform", null )
-					.html( "" );
-
-			this.svg = svg;
-			this.root = root;
 
 			//////ATOMS//////
-			const atomsroot = root.append( "g" ).attr( "class", "atoms" )
-			atoms.forEach( function( atom, i ){
+			root.append( "g" )
+				.attr( "class", "atoms" )
+				.selectAll( "g" )
+				.data( this.molecule.atoms )
+				.enter()
+				.each( drawAtom )
 
-				const atomGrp = atomsroot.append( "g" )
+			//atoms.forEach( drawAtom );
+
+			//////BONDS//////
+			const labelOffset = 8;
+			const bondsroot = root.append( "g" )
+				.attr( "class", "bonds" )
+				.selectAll( "g" )
+				.data( this.molecule.bonds )
+				.enter()
+				.each( drawBond )
+
+			function drawAtom( atom, i ){
+
+				const pos = { x: atom.pos.x * bondScale, y: atom.pos.y * -bondScale };
+
+				const atomGrp = d3.select( this ).append( "g" )
 									.attr( "class", "atom_" + atom.element )
 									.attr( "id", i )
-									.datum( atom )
 
 				atom.element != "H" && atomGrp.append( "g" ).attr( "class", "hydrogens" );
 
 				const highlightCircle = atomGrp.append( "circle" )
 									.attr( "class", "highlight" )
 									.attr( "id", "highlight_" + i )
-									.attr( "cx", atom.pos[1] )
-									.attr( "cy", atom.pos[2] )
-									.attr( "r", 12 )
+									.attr( "cx", pos.x )
+									.attr( "cy", pos.y )
+									.attr( "r", bondScale/3 )
 
 				const txt = atomGrp.append( "text" )
 									.attr( "class", "label_" + atom.element )
 									.attr( "id", "label_" + i )
-									.attr( "x", atom.pos[1] )
-									.attr( "y", atom.pos[2] + 6 )
+									.attr( "x", pos.x )
+									.attr( "y", pos.y + 6 )
 									.text( atom.element !== "C" || atom.charge ? atom.element : "" )
 
 				const ind = atomGrp.append( "g" )
@@ -415,8 +505,8 @@
 									.attr( "display", this.showIndices ? null : "none" )
 
 				const indBBox = ind.append( "text" )
-									.attr( "x", atom.pos[1] - txt.node().getBBox().width/2 - i.toString().split("").length * 2 )
-									.attr( "y", atom.pos[2] - 5 )
+									.attr( "x", pos.x - txt.node().getBBox().width/2 - i.toString().split("").length * 2 )
+									.attr( "y", pos.y - 5 )
 									.text( i )
 									.node().getBBox()
 
@@ -434,8 +524,8 @@
 					const chgTxt = chg.append( "text" )
 										.attr( "class", "atomcharge" )
 										.attr( "id", "atomchg_" + i )
-										.attr( "x", atom.pos[1] + txt.node().getBBox().width/2 + atom.charge.toString().length * 2 - 2 )
-										.attr( "y", atom.pos[2] - 8 )
+										.attr( "x", atom.pos.x + txt.node().getBBox().width/2 + atom.charge.toString().length * 2 - 2 )
+										.attr( "y", atom.pos.y - 8 )
 										.text( atom.charge === -1 ? "-" : ( atom.charge === 1 ? "+" : atom.charge ) )
 
 					chg.append( "circle" )
@@ -449,52 +539,33 @@
 				atom.HTML = atomGrp.node();
 				atom.highlightCircle = highlightCircle.node()
 
-			})
+			}
 
-			//////BONDS//////
-			const bondsroot = root.append( "g" ).attr( "class", "bonds" ).lower();
-			const labelOffset = 8;
-
-			bonds.forEach( function( bond, j ){
-
-				const tmp = bondsroot.append( "g" ).attr( "class", "bond_" + bond.type ).datum( bond );
-				const theta = Math.atan2( bond.end.pos[2] - bond.start.pos[2], bond.end.pos[1] - bond.start.pos[1] );
-				const length = Math.hypot( bond.end.pos[1] - bond.start.pos[1], bond.end.pos[2] - bond.start.pos[2] );
-
-				const highlight = tmp.append( "rect" )
-					.attr( "x", -8 ).attr( "y", -7.5 )
-					.attr( "rx", 7.5 ).attr( "ry", 7.5 )
-					.attr( "width", length + 2*8 ).attr( "height", 15)
-					.attr("transform", "translate(" + bond.start.pos[1] + "," + bond.start.pos[2] + ")rotate(" + theta*180/Math.PI + ")" )
-					.attr( "class", "highlight" )
-					.attr( "id", "highlight_" + bond.start.index + "_" + bond.end.index );
-
-				drawBond( tmp, bond, theta, length );
-
-				if( bond.start.element === "H" || bond.end.element === "H" ){
-
-					svg.node().getElementById( bond.start.element === "H" ? bond.end.index : bond.start.index ).getElementsByClassName("hydrogens")[0].appendChild( tmp.node() )
-					svg.node().getElementById( bond.start.element === "H" ? bond.end.index : bond.start.index ).getElementsByClassName("hydrogens")[0].appendChild( svg.node().getElementById( ( bond.start.element === "H" ? bond.start.index : bond.end.index ) ) )
-
-				}
-
-				bond.HTML = tmp.node();
-				bond.highlight = highlight.node();
-
-			});
-
-			this.zoomable && this.fitToScreen();
-
-			function drawBond( parent, bond, angle, length ){
+			function drawBond( bond, i ){
 
 				let tmp;
 
-				const coords = [bond.start.pos[1] + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.cos( angle ) : 0 ),
-								bond.end.pos[1] - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.cos( angle ) : 0 ),
-								bond.start.pos[2] + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.sin( angle ) : 0 ),
-								bond.end.pos[2] - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.sin( angle ) : 0 )]
+				const posStart = { x: bond.start.pos.x * bondScale, y: bond.start.pos.y * -bondScale };
+				const posEnd = { x: bond.end.pos.x * bondScale, y: bond.end.pos.y * -bondScale };
 
-				const placeholderLine = tmp.append( "line" )
+				const bondGrp = d3.select( this ).append( "g" ).attr( "class", "bond_" + bond.type );
+				const theta = Math.atan2( posEnd.y - posStart.y, posEnd.x - posStart.x );
+				const length = Math.hypot( posEnd.x - posStart.x, posEnd.y - posStart.y );
+
+				const highlight = bondGrp.append( "rect" )
+					.attr( "x", -bondScale/6 ).attr( "y", -bondScale/6 )
+					.attr( "rx", bondScale/10 ).attr( "ry", bondScale/10 )
+					.attr( "width", length + bondScale/3 ).attr( "height", bondScale/3)
+					.attr("transform", "translate(" + posStart.x + "," + posStart.y + ")rotate(" + theta*180/Math.PI + ")" )
+					.attr( "class", "highlight" )
+					.attr( "id", "highlight_" + bond.start.index + "_" + bond.end.index );
+
+				const coords = [posStart.x + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.cos( theta ) : 0 ),
+								posEnd.x - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.cos( theta ) : 0 ),
+								posStart.y + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.sin( theta ) : 0 ),
+								posEnd.y - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.sin( theta ) : 0 )]
+
+				const placeholderLine = bondGrp.append( "line" )
 						.attr( "class", "bondline")
 						.attr( "x1", coords[0] )
 						.attr( "x2", coords[1] )
@@ -503,35 +574,35 @@
 
 				switch( bond.type ){
 
-					case "1": //single bond
+					case 1: //single bond
 
 						switch( bond.direction ){
 
 							case 0: //normal bond
 
-								parent.attr( "class", "bond" );
+								bondGrp.attr( "class", "bond" );
 								break;
 
 							case 1: //wedge bond
 
-								tmp = parent.attr( "class", "bond_wedge" ).append( "polygon" )
+								tmp = bondGrp.attr( "class", "bond_wedge" ).append( "polygon" )
 									.attr( "points", coords[0] + "," + coords[2] + " " +
-										 ( coords[1] + 3*Math.cos( angle + Math.PI/2 ) ).toFixed( 2 ) + "," + ( coords[3] + 3*Math.sin( angle + Math.PI/2 ) ).toFixed( 2 ) + " " +
-										 ( coords[1] - 3*Math.cos( angle + Math.PI/2 ) ).toFixed( 2 ) + "," + ( coords[3] - 3*Math.sin( angle + Math.PI/2 ) ).toFixed( 2 ) );
+										 ( coords[1] + 3*Math.cos( theta + Math.PI/2 ) ).toFixed( 2 ) + "," + ( coords[3] + 3*Math.sin( theta + Math.PI/2 ) ).toFixed( 2 ) + " " +
+										 ( coords[1] - 3*Math.cos( theta + Math.PI/2 ) ).toFixed( 2 ) + "," + ( coords[3] - 3*Math.sin( theta + Math.PI/2 ) ).toFixed( 2 ) );
 								placeholderLine.remove()
 								break;
 
 							case 6: //hash bond
 
-								tmp = parent.attr( "class", "bond_hash" );
+								tmp = bondGrp.attr( "class", "bond_hash" );
 								const point = [0, 0];
 								for( let i = 0; Math.hypot( ...point ) < length ; i++ ){
 									tmp.append( "line" ).attr( "class", "bond" )
-										.attr( "x1", ( coords[0] + point[0] + Math.hypot( ...point )/length * 3*Math.cos( angle + Math.PI/2 ) ).toFixed( 2 ) )
-										.attr( "x2", ( coords[0] + point[0] - Math.hypot( ...point )/length * 3*Math.cos( angle + Math.PI/2 ) ).toFixed( 2 ) )
-										.attr( "y1", ( coords[2] + point[1] + Math.hypot( ...point )/length * 3*Math.sin( angle + Math.PI/2 ) ).toFixed( 2 ) )
-										.attr( "y2", ( coords[2] + point[1] - Math.hypot( ...point )/length * 3*Math.sin( angle + Math.PI/2 ) ).toFixed( 2 ) );
-									point = [( i + 1 ) * 3 * Math.cos( angle ), ( i + 1 ) * 3 * Math.sin( angle )];
+										.attr( "x1", ( coords[0] + point[0] + Math.hypot( ...point )/length * 3*Math.cos( theta + Math.PI/2 ) ).toFixed( 2 ) )
+										.attr( "x2", ( coords[0] + point[0] - Math.hypot( ...point )/length * 3*Math.cos( theta + Math.PI/2 ) ).toFixed( 2 ) )
+										.attr( "y1", ( coords[2] + point[1] + Math.hypot( ...point )/length * 3*Math.sin( theta + Math.PI/2 ) ).toFixed( 2 ) )
+										.attr( "y2", ( coords[2] + point[1] - Math.hypot( ...point )/length * 3*Math.sin( theta + Math.PI/2 ) ).toFixed( 2 ) );
+									point = [( i + 1 ) * 3 * Math.cos( theta ), ( i + 1 ) * 3 * Math.sin( theta )];
 								};
 								placeholderLine.remove()
 								break;
@@ -540,57 +611,70 @@
 
 						break;
 
-					case "2": //double bond
+					case 2: //double bond
 
-						parent.attr( "class", "bond_dbl" );
+						bondGrp.attr( "class", "bond_dbl" );
 						[-1, 1].forEach( el => {
 
-							parent.node().appendChild( d3.select( placeholderLine.node().cloneNode() )
-								.attr( "x1", coords[0] + el*2.5*Math.cos( angle + Math.PI/2 ) )
-								.attr( "x2", coords[1] + el*2.5*Math.cos( angle + Math.PI/2 ) )
-								.attr( "y1", coords[2] + el*2.5*Math.sin( angle + Math.PI/2 ) )
-								.attr( "y2", coords[3] + el*2.5*Math.sin( angle + Math.PI/2 ) )
+							bondGrp.node().appendChild( d3.select( placeholderLine.node().cloneNode() )
+								.attr( "x1", coords[0] + el*bondScale/15*Math.cos( theta + Math.PI/2 ) )
+								.attr( "x2", coords[1] + el*bondScale/15*Math.cos( theta + Math.PI/2 ) )
+								.attr( "y1", coords[2] + el*bondScale/15*Math.sin( theta + Math.PI/2 ) )
+								.attr( "y2", coords[3] + el*bondScale/15*Math.sin( theta + Math.PI/2 ) )
 								.node() );
 
 						})
 						placeholderLine.remove()
 						break;
 
-					case "3": //triple bond
+					case 3: //triple bond
 
-						parent.attr( "class", "bond_trp" );
+						bondGrp.attr( "class", "bond_trp" );
 						[-1, 1].forEach( el => {
 
-							parent.node().appendChild( d3.select( placeholderLine.node().cloneNode() )
-								.attr( "x1", coords[0] + el*2.5*Math.cos( angle + Math.PI/2 ) )
-								.attr( "x2", coords[1] + el*2.5*Math.cos( angle + Math.PI/2 ) )
-								.attr( "y1", coords[2] + el*2.5*Math.sin( angle + Math.PI/2 ) )
-								.attr( "y2", coords[3] + el*2.5*Math.sin( angle + Math.PI/2 ) )
+							bondGrp.node().appendChild( d3.select( placeholderLine.node().cloneNode() )
+								.attr( "x1", coords[0] + el*bondScale/15*Math.cos( theta + Math.PI/2 ) )
+								.attr( "x2", coords[1] + el*bondScale/15*Math.cos( theta + Math.PI/2 ) )
+								.attr( "y1", coords[2] + el*bondScale/15*Math.sin( theta + Math.PI/2 ) )
+								.attr( "y2", coords[3] + el*bondScale/15*Math.sin( theta + Math.PI/2 ) )
 								.node() );
 
 						})
 						break;
 
-					case "9": //aromatic bond
+					case 9: //aromatic bond
 
 						placeholderLine.attr("class","bond")
 						break;
 
 				}
 
+				if( bond.start.element === "H" || bond.end.element === "H" ){
+
+					const rootAtom = root.select( "[id='" + ( bond.start.element === "H" ? bond.end.index : bond.start.index ) + "'] > .hydrogens" ).node();
+
+					rootAtom.appendChild( bondGrp.node() );
+					rootAtom.appendChild( root.select( "[id='" + ( bond.start.element !== "H" ? bond.end.index : bond.start.index ) + "']" ).node() );
+
+				}
+
+				bond.HTML = bondGrp.node();
+				bond.highlight = highlight.node();
+
 			}
 
 			return root
+
 		},
 
 		fitToScreen: function(){
 			this.root.attr( "transform", null ) ;
-			const viewBox = this.root.node().parentNode.getBoundingClientRect();
-			const rootBox = this.root.node().getBoundingClientRect();
+			const viewBox = this.root.node().parentNode.viewBox.baseVal;
+			const rootBox = this.root.node().getBBox();
 
-			const zoom = viewBox.width/rootBox.width < viewBox.height/rootBox.height ? viewBox.width/rootBox.width : viewBox.height/rootBox.height
+			const zoom = viewBox.width/rootBox.width < viewBox.height/rootBox.height ? viewBox.width/rootBox.width : viewBox.height/rootBox.height;
 
-			this.svg.call( this.zoomFunc.transform, d3.zoomIdentity.translate( viewBox.width/2 + ( - ( rootBox.left - viewBox.left ) - rootBox.width/2 )*zoom, viewBox.height/2 + ( - ( rootBox.top - viewBox.top ) - rootBox.height/2 )*zoom ).scale( zoom ) )
+			this.svg.call( this.zoomFunc.transform, d3.zoomIdentity.translate( viewBox.width/2 + ( - ( rootBox.x - viewBox.x ) - rootBox.width/2 )*zoom, viewBox.height/2 + ( - ( rootBox.y - viewBox.y ) - rootBox.height/2 )*zoom ).scale( zoom ) )
 			this.svg.call( this.zoomFunc );
 		},
 
@@ -610,19 +694,35 @@
 
 		},
 
-		onWindowResize: function(){
-			if( this.svg ){
-				this.svg.node().viewBox.baseVal.height = this.svg.node().viewBox.baseVal.width / ( this.DOM.style( "width" ).slice( 0, -2 ) / this.DOM.style( "height" ).slice( 0, -2 ) );
-			} else{
-				console.warn( "No SVG Element to resize. Call .draw() first!" );
-			}
-
-		},
-
 	})
 
 	/////2D canvas properties/////
 	Object.defineProperties( Mol2D.prototype, {
+
+		"Container": {
+
+			get: function(){
+
+				return d3.select( this._DOM );
+
+			},
+
+			set: function( value ){
+
+				if( value instanceof Element ){
+
+					this._DOM = value;
+					this._scaleBox = { width: this.dims.width/value.getBoundingClientRect().width, height: this.dims.height/value.getBoundingClientRect().height };
+
+				} else{
+
+						console.warn( "Container is not of type Element!" );
+
+				}
+
+			}
+
+		},
 
 		"zoomable": {
 
@@ -654,7 +754,15 @@
 
 			}
 
-		}
+		},
+
+		"bondScale": {
+
+		    get: function(){ return this._bondScale },
+
+		    set: function( value ){ this._bondScale = value; this.draw(); }
+
+		},
 
 	})
 
@@ -1038,6 +1146,8 @@
 
 		init: function(){
 
+			if( this._initialised ){ console.warn( "Molecule already initialised!" ); return }
+
 			if( this._DOM ){
 
 				//////CAMERAS//////
@@ -1080,43 +1190,37 @@
 
 		draw: function() {
 
+			const updateMousePos = evt => {
+
+				const clientX = evt.changedTouches ? evt.changedTouches[0].clientX : evt.clientX;
+				const clientY = evt.changedTouches ? evt.changedTouches[0].clientY : evt.clientY;
+
+
+				const elBox = this.renderer.domElement.getBoundingClientRect()
+				this.mouse.x = ( clientX - elBox.left ) / elBox.width*2 - 1;
+				this.mouse.y = 1 - ( ( clientY - elBox.top ) / elBox.height*2);
+
+			}
+
 			if( !this._molecule ){ console.warn( "No molecule to draw! Set .Molecule = Molecule" ) }
 			else if( this._molecule.ajaxRunning ){ console.warn( "AJAX Request currently in progress: no data to draw. Listen for event 'ajaxComplete' after calling getFromSMILE() to call draw()." ) }
 			else if( !this._initialised ){ console.warn( "3D Container needs initialising. Call .init() before attempting to draw." ) }
 			else{
 
-				if (Detector.webgl){
+				this.scene.remove( this.molGroup );
+				this.molGroup = this.genGroup( this._molecule );
+				this.scene.add( this.molGroup );
+				this.showHs = this._showHs;
+				this.resetView();
 
-					this.scene.remove( this.molGroup );
-					this.molGroup = this.genGroup( this._molecule );
-					this.scene.add( this.molGroup );
-					this.showHs = this._showHs;
-					this.resetView();
+				if( this.animID ){ window.cancelAnimationFrame( this.animID ); this.animID = null; };
+				this.play();
+				this._onWindowResize();
+				window.removeEventListener( "resize", this._onWindowResize );
+				window.addEventListener( "resize", this._onWindowResize );
+				["mousemove","touchmove","touchstart"].forEach( e => document.addEventListener( e, updateMousePos, false )
+				);
 
-					if( this.animID ){ window.cancelAnimationFrame( this.animID ) };
-					this.play();
-					this._onWindowResize();
-					window.addEventListener( "resize", this._onWindowResize );
-					["mousemove","touchmove","touchstart"].forEach( e => document.addEventListener( e, evt => {
-
-							//evt.preventDefault();
-
-							const clientX = evt.changedTouches ? evt.changedTouches[0].clientX : evt.clientX;
-							const clientY = evt.changedTouches ? evt.changedTouches[0].clientY : evt.clientY;
-
-
-							const elBox = this.renderer.domElement.getBoundingClientRect()
-							this.mouse.x = ( clientX - elBox.left ) / elBox.width*2 - 1;
-							this.mouse.y = 1 - ( ( clientY - elBox.top ) / elBox.height*2);
-
-						}, false )
-					);
-
-				}else{
-
-					d3.select( this._DOM ).appendChild( Detector.getWebGLErrorMessage() );
-
-				}
 			}
 
 			return this
@@ -1167,7 +1271,7 @@
 
 				const sphere = new THREE.SphereGeometry( ( el.element === "H" ? 0.2 : 0.25 ) , 16, 16 )
 				const mesh = new THREE.Mesh( sphere, this.atomCols[el.element]["material"] );
-				mesh.position.set( ...el.pos );
+				mesh.position.copy( el.pos );
 
 				mesh.name = el.index;
 				mesh.userData.tooltip = el.element;
@@ -1189,7 +1293,7 @@
 
 			bonds.forEach( ( el, i ) => {
 
-				var vec = new THREE.Vector3( ...el.end.pos ).sub( new THREE.Vector3( ...el.start.pos ) );
+				var vec = new THREE.Vector3().copy( el.end.pos ).sub( new THREE.Vector3().copy( el.start.pos ) );
 
 				switch ( el.type ){
 
@@ -1302,7 +1406,7 @@
 				mesh.userData.tooltip = el;
 				mesh.userData.type = "bond";
 
-				mesh.position.set( ...el.start.pos );
+				mesh.position.copy( el.start.pos );
 
 				el.HTML = mesh;
 
@@ -1357,7 +1461,7 @@
 			const angularSize = this.camActive.fov * Math.PI / 180;
 			const distance = Math.sqrt( 2 ) * boundSph.radius / Math.tan( angularSize / 2 );
 
-			this.setView( boundSph, new THREE.Vector3().set( distance, 0, 0), new THREE.Vector3( 0, 1, 0 ) );
+			this.setView( boundSph, new THREE.Vector3().set( 0, 0, distance), new THREE.Vector3( 0, 1, 0 ) );
 
 			this.disableInteractions = this._disableInteractions;
 
@@ -1483,7 +1587,15 @@
 
 			set: function( value ){
 
-				this._DOM = value;
+				if( value instanceof Element ){
+
+					this._DOM = value;
+
+				} else{
+
+						console.warn( "Container is not of type Element!" );
+
+				}
 
 			}
 
@@ -1499,7 +1611,7 @@
 
 			set: function( value ){
 
-				this._molecule = value;
+				this._molecule = value instanceof MolViewer.Molecule ? value : new MolViewer.Molecule( value );
 
 			}
 

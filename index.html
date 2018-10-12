@@ -1,0 +1,87 @@
+<!DOCTYPE html><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+	<title>Particle Test</title>
+</head>
+<body>
+    <div class="page" style="height:90vh;width:90vw">
+        <div id="canvas3D" style="height:80%;width:45%;float:left;"></div>
+        <div id="canvas2D" style="height:80%;width:45%;float:left;"></div>
+		<p id="hud" style="position:absolute;bottom:10px;"></p>
+    </div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.7.0/d3.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.3/dat.gui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/97/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/effects/OutlineEffect.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://rawgit.com/mrdoob/stats.js/master/build/stats.min.js"></script>
+	<script src="molViewer.js"></script>
+
+    <script>
+
+    const mol = new MolViewer.Molecule(`
+		  MJ182500
+
+		 16 18  0  0  0  0  0  0  0  0999 V2000
+		    0.3723    1.4698    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    1.0867    1.0573    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    1.0867    0.2323    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    0.3723   -0.1801    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -0.3421    0.2323    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -0.3421    1.0573    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -1.0566    1.4698    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+		   -1.7710    1.0573    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -2.4855    1.4698    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -1.7711    2.7073    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		   -1.0566    2.2948    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    1.8012   -0.1801    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+		    2.5157    0.2323    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    3.2301   -0.1801    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    2.5157   -1.4176    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		    1.8012   -1.0051    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+		  1  2  2  0  0  0  0
+		  2  3  1  0  0  0  0
+		  3  4  2  0  0  0  0
+		  4  5  1  0  0  0  0
+		  5  6  2  0  0  0  0
+		  6  1  1  0  0  0  0
+		  7  8  1  0  0  0  0
+		  7 11  1  0  0  0  0
+		  8  9  2  0  0  0  0
+		  9 10  1  0  0  0  0
+		 10 11  2  0  0  0  0
+		  6  7  1  0  0  0  0
+		 12 13  1  0  0  0  0
+		 12 16  1  0  0  0  0
+		 13 14  2  0  0  0  0
+		 14 15  1  0  0  0  0
+		 15 16  2  0  0  0  0
+		  3 12  1  0  0  0  0
+		M  END
+
+    `).centre();
+
+    const mol3D = new MolViewer.Mol3D( mol, d3.select( "#canvas3D" ).node(), { highlightSync: true, mouseoverDispatch: true } ).init().draw();
+    const mol2D = new MolViewer.Mol2D( mol, d3.select( "#canvas2D" ).node() ).init().draw();
+
+	document.addEventListener( "3DMousein", function( ev ){
+
+		const detail = ev.detail.objects[0].object.userData.source;
+		const hud = d3.select( "#hud" );
+
+		if( detail instanceof MolViewer.Atom ){
+
+			hud.text( "Active: " + detail.element + " - " + detail.index )
+
+		} else{
+
+			hud.text( "Active: Bond between " + detail.start.element + " - " + detail.start.index + " and " + detail.end.element + " - " + detail.end.index )
+
+		}
+
+
+	} );
+
+    </script>
+</body>
