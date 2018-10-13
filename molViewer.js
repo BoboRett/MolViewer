@@ -314,8 +314,9 @@
 		this.Container = container;
 		this.molecule = molecule;
 
-		this.zoomable = params.zoomable || true;
-		this.showIndices = params.showIndices || false;
+		this.zoomable = params.zoomable !== undefined ? params.zoomable : true;
+		this.showIndices = params.showIndices !== undefined ? params.showIndices : false;
+		this.showHs = params.showHydrogen !== undefined ? params.showHydrogen : true;
 
 		this.zoomFunc = d3.zoom().on( "zoom", function(){
 
@@ -436,6 +437,7 @@
 			this.svg = svg;
 			this.root = this.genMolecule();
 			this.svg.node().appendChild( this.root.node() );
+			this.showHs = this.showHs;
 
 			this.zoomable && this.fitToScreen();
 
@@ -517,7 +519,7 @@
 					.attr( "height", indBBox.height )
 					.lower();
 
-				if( atom.charge ){
+				if( atom.charge && false ){ //TODO
 
 					const chg = atomGrp.append( "g" )
 									.attr( "class", "charge" );
@@ -536,7 +538,7 @@
 
 				}
 
-				atom.HTML = atomGrp.node();
+				atom.obj2D = atomGrp.node();
 				atom.highlightCircle = highlightCircle.node()
 
 			}
@@ -550,7 +552,6 @@
 
 				const bondGrp = d3.select( this ).append( "g" ).attr( "class", "bond_" + bond.type );
 				const theta = Math.atan2( posEnd.y - posStart.y, posEnd.x - posStart.x );
-				const length = Math.hypot( posEnd.x - posStart.x, posEnd.y - posStart.y );
 
 				const highlight = bondGrp.append( "rect" )
 					.attr( "x", -bondScale/6 ).attr( "y", -bondScale/6 )
@@ -560,10 +561,10 @@
 					.attr( "class", "highlight" )
 					.attr( "id", "highlight_" + bond.start.index + "_" + bond.end.index );
 
-				const coords = [posStart.x + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.cos( theta ) : 0 ),
-								posEnd.x - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.cos( theta ) : 0 ),
-								posStart.y + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * 8 * Math.sin( theta ) : 0 ),
-								posEnd.y - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * 8 * Math.sin( theta ) : 0 )]
+				const coords = [posStart.x + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.cos( theta ) : 0 ),
+								posEnd.x - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.cos( theta ) : 0 ),
+								posStart.y + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.sin( theta ) : 0 ),
+								posEnd.y - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.sin( theta ) : 0 )]
 
 				const placeholderLine = bondGrp.append( "line" )
 						.attr( "class", "bondline")
@@ -595,7 +596,8 @@
 							case 6: //hash bond
 
 								tmp = bondGrp.attr( "class", "bond_hash" );
-								const point = [0, 0];
+								const length = Math.hypot( coords[1] - coords[0], coords[2] - coords[3] );
+								let point = [0, 0];
 								for( let i = 0; Math.hypot( ...point ) < length ; i++ ){
 									tmp.append( "line" ).attr( "class", "bond" )
 										.attr( "x1", ( coords[0] + point[0] + Math.hypot( ...point )/length * 3*Math.cos( theta + Math.PI/2 ) ).toFixed( 2 ) )
@@ -658,7 +660,7 @@
 
 				}
 
-				bond.HTML = bondGrp.node();
+				bond.obj2D = bondGrp.node();
 				bond.highlight = highlight.node();
 
 			}
@@ -676,16 +678,6 @@
 
 			this.svg.call( this.zoomFunc.transform, d3.zoomIdentity.translate( viewBox.width/2 + ( - ( rootBox.x - viewBox.x ) - rootBox.width/2 )*zoom, viewBox.height/2 + ( - ( rootBox.y - viewBox.y ) - rootBox.height/2 )*zoom ).scale( zoom ) )
 			this.svg.call( this.zoomFunc );
-		},
-
-		showH: function( showH ){
-
-			self.Mol2D.root.selectAll( ".hydrogens, .hydrogens > *" ).each( function(){
-
-				d3.select( this ).attr( "display", showH ? "all" : "none" );
-
-			});
-
 		},
 
 		showLabels: function( show ){
@@ -751,6 +743,14 @@
 			set: function ( value ) {
 
 				this._showIndices = value;
+				if( !this.root ) return;
+
+				this.root.selectAll( ".atomind" ).each( function(){
+
+					d3.select( this ).attr( "display", value ? null : "none" );
+
+				})
+
 
 			}
 
@@ -761,6 +761,26 @@
 		    get: function(){ return this._bondScale },
 
 		    set: function( value ){ this._bondScale = value; this.draw(); }
+
+		},
+
+		"showHs": {
+
+			get: function(){ return this._showHs },
+
+			set: function( value ){
+
+				this._showHs = value;
+				if( !this.root ) return;
+
+				this.root.selectAll( ".hydrogens, .hydrogens > *" ).each( function(){
+
+					d3.select( this ).attr( "display", value ? null : "none" );
+
+				})
+
+
+			}
 
 		},
 
@@ -954,16 +974,16 @@
 			}
 		}
 
-		this.highlight           = params.highlight || true;
-		this.autoRotate          = params.autoRotate || false;
-		this.highlightSync       = params.highlightSync || false;
-		this.mouseoverDispatch   = params.mouseoverDispatch || false;
-		this.labelTrack          = params.labelTrack || true;
+		this.highlight           = params.highlight !== undefined ? params.highlight : true;
+		this.autoRotate          = params.autoRotate !== undefined ? params.autoRotate : false;
+		this.highlightSync       = params.highlightSync !== undefined ? params.highlightSync : false;
+		this.mouseoverDispatch   = params.mouseoverDispatch !== undefined ? params.mouseoverDispatch : false;
+		this.labelTrack          = params.labelTrack !== undefined ? params.labelTrack : true;
 
-		this.disableInteractions = params.disableInteractions || false;
-		this.showfGroups         = params.showfGroups || true;
-		this.showHs              = params.showHs || true;
-		this.showStats           = params.showStats || false;
+		this.disableInteractions = params.disableInteractions !== undefined ? params.disableInteractions : false;
+		this.showfGroups         = params.showfGroups !== undefined ? params.showfGroups : true;
+		this.showHs              = params.showHs !== undefined ? params.showHs : true;
+		this.showStats           = params.showStats !== undefined ? params.showStats : false;
 
 		//////CPK Colours//////
 		{
@@ -1079,7 +1099,8 @@
 				Mt: 	[0.92,0,0.15]
 			}, {
 				get: function( target, name ){
-						return target.hasOwnProperty( name ) ? target[name]: [1, 0.1, 0.55];
+						if( !target.hasOwnProperty( name ) ){ target[name] = [ 1, 0.1, 0.55 ] };
+						return target[name]
 				}
 			});
 
@@ -1091,7 +1112,8 @@
 				9 : [0.3, 0.3, 0.3]
 			}, {
 				get: function( target, name ){
-						return target.hasOwnProperty( name ) ? target[name]: [0, 0, 0];
+					if( !target.hasOwnProperty( name ) ){ target[name] = [ 0, 0, 0 ] };
+					return target[name]
 				}
 			});
 
@@ -1113,7 +1135,8 @@
 				Nitrile : [0.56, 0.56, 1.0],
 			}, {
 				get: function( target, name ){
-						return target.hasOwnProperty( name ) ? target[name]: [1, 0.1, 0.55];
+					if( !target.hasOwnProperty( name ) ){ target[name] = [1, 0.1, 0.55] };
+					return target[name]
 				}
 			});
 		}
@@ -1260,6 +1283,8 @@
 
 				if( !this.atomCols[el.element]["material"] ){
 
+					if( !this.atomCols[el.element] ) this.atomCols[el.element] = this.atomCols.xx;
+
 					this.atomCols[el.element]["material"] = new THREE.MeshToonMaterial({
 							color: new THREE.Color().setRGB( ...this.atomCols[el.element] ),
 							reflectivity: 0.8,
@@ -1278,7 +1303,7 @@
 				mesh.userData.type = "atom";
 				mesh.userData.source = el;
 
-				el.HTML = mesh;
+				el.obj3D = mesh;
 
 				group.push( mesh );
 
@@ -1408,7 +1433,7 @@
 
 				mesh.position.copy( el.start.pos );
 
-				el.HTML = mesh;
+				el.obj3D = mesh;
 
 				group.push( mesh );
 
@@ -1457,7 +1482,7 @@
 
 		resetView: function(){
 
-			const boundSph = new THREE.Box3().setFromObject( this.molGroup ).getBoundingSphere();
+			const boundSph = new THREE.Box3().setFromObject( this.molGroup ).getBoundingSphere( new THREE.Sphere() );
 			const angularSize = this.camActive.fov * Math.PI / 180;
 			const distance = Math.sqrt( 2 ) * boundSph.radius / Math.tan( angularSize / 2 );
 
