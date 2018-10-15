@@ -1,7 +1,7 @@
-# MolViewer
+# Intro
 **MolViewer** is a JavaScript library for drawing Chemical Structures. It brings tools to easily convert MOL files and SMILE strings into 2D and 3D representations.
 
-## Resources
+# Resources
 * [Getting Started](#getting-started)
     * [Quick Start](#quick-start)
     * [Prerequisites](#prerequisites)
@@ -15,13 +15,17 @@
     * [Mol3D]
 * [Demo](https://boborett.github.io/MolViewer/)
 
-## Getting Started
+---
+---
+---
+
+# Getting Started
 
 These instructions should hopefully get you off the ground with regards to using this library. My style is usually to expose everything (also because I'm lazy), so inspecting the objects might show you a lot of things you're never going to need to touch. However, I designed it as a basic framework for my own tools, so hopefully it's very versatile for anyone else wanting to make something cool with it.
 
 Feel free to send me any examples that could be featured here.
 
-### Quick Start
+## Quick Start
 
 Without knowing anything, you can get a molecule floating in your webpage with the following:
 
@@ -37,7 +41,7 @@ Without knowing anything, you can get a molecule floating in your webpage with t
         const Mol3D = new MolViewer.Mol3D( Molecule, document.getElementById( "mol3D" ) ).init().draw()
     </script>
 
-### Prerequisites
+## Prerequisites
 
 To utilise this entire library, you'll need 3 other JavaScript modules.
 * [D3](https://d3js.org/)(Last tested on v5.7.0)
@@ -51,7 +55,7 @@ To utilise this entire library, you'll need 3 other JavaScript modules.
     Fairly optional. Just required to convert Smile string into 2D.
 
 
-### Installing
+## Installing
 
 All you need to do is include the script tag in your HTML.
 
@@ -78,6 +82,7 @@ Otherwise, you can navigate around relative to your page with a mix of .'s and /
         * molViewer.js
 
 
+
     <script src="Scripts/molViewer.js"></script>
 
 ---
@@ -90,54 +95,58 @@ Or, if my webpages were kept nested inside a project folder:
         * molViewer.js
 
 
+
     <script src="../Scripts/molViewer.js"></script>
     (../ means 'up' a folder to get us to the project's root directory)
 
 ---
 
-## API
+# API
 
-### Atom( [*int* index, *array* position, *string* element, *int* charge = 0] )
+## Atom( [*int* index, *array* position, *string* element, *int* charge = 0] )
 
 Container class for Atoms.
 
 #### Properties
-##### *int* *Atom*.index
+---
+#### *int* *Atom*.index
 
-##### *obj* *Atom*.pos
+#### *obj* *Atom*.pos
 
 Vector-like: { x, y, z }
 
-##### *string* *Atom*.element
+#### *string* *Atom*.element
 
-##### *int* *Atom*.charge
+#### *int* *Atom*.charge
 
-##### *array* *Atom*.bondedTo
+#### *array* *Atom*.bondedTo
 
   Gives an array of connections with Atom, in form of { bond, pairedAtom }
 
-##### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Atom*.object2D
+#### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Atom*.object2D
 
 SVG element that corresponds to Atom
 
-##### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Atom*.object3D
+#### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Atom*.object3D
 
 Object that corresponds to Atom
 
 ---
+---
 
-### Bond( [*int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0] )
+## Bond( [*int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0] )
 
 Container class for Bonds.
 
 #### Properties
-##### *int* *Bond*.index
+---
+### *int* *Bond*.index
 
-##### *[Atom]* *Bond*.start
+### *[Atom]* *Bond*.start
 
-##### *[Atom]* *Bond*.end
+### *[Atom]* *Bond*.end
 
-##### *int* *Bond*.type
+### *int* *Bond*.type
 
    * 1: Single
    * 2: Double
@@ -145,49 +154,53 @@ Container class for Bonds.
    * 4: Aromatic
    * 9: Transition
 
-##### *int* *Bond*.direction
+### *int* *Bond*.direction
 
    Bond stereochemistry
 
    * 1: Wedged
    * 6: Hashed
 
-##### *bool* *Bond*.claimed
+### *bool* *Bond*.claimed
 
 Used internally during molecular searches, see [Molecule.fGroupSearcher()][Molecule]
 
-##### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Bond*.object2D
+### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Bond*.object2D
 
 SVG element that corresponds to Bond
 
-##### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Bond*.object3D
+### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Bond*.object3D
 
 Object that corresponds to Bond
 
+---
 ---
 
 ### fGroup( [*[Atom]* source, *array[[Atom]]* domain, *array[[Bond]]* claimed, *string* type ] )
 
 Container class for functional groups.
 
-#### Properties
+### Properties
+---
 
-##### *string* *fGroup*.type
+### *string* *fGroup*.type
 
    Name of functional group, i.e. Primary Amine, Hydroxyl, etc.
 
-##### *array[[Atom]]* *fGroup*.domain
+### *array[[Atom]]* *fGroup*.domain
 
    List of atoms contained within group
 
-##### *array[[Bond]]* *fGroup*.claimed
+### *array[[Bond]]* *fGroup*.claimed
 
    List of bonds owned by group
 
 ### Molecule( [*string* molFile] )
 
-#### Properties
-##### *string* *Molecule*.molFile
+### Properties
+---
+
+### *string* *Molecule*.molFile
 
 Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups.
 
