@@ -50,11 +50,10 @@ To utilise this entire library, you'll need 5 other JavaScript modules.
 * [D3](https://d3js.org/)(Last tested on v5.7.0)
 
     *Essential* for 2D drawing
-* [three.js - Core](https://threejs.org/)(Last tested on r97)
-
-    *Essential* for 3D drawing
-* [three.js - OutlineEffect](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/effects/OutlineEffect.js)
-* [three.js - Orbit Controls](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/controls/OrbitControls.js)
+    * [three.js - Core](https://threejs.org/)(Last tested on r97)
+    * [three.js - OutlineEffect](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/effects/OutlineEffect.js)
+    * [three.js - Orbit Controls](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/controls/OrbitControls.js)
+        *Essential* for 3D drawing
 
 * [OpenChemLib](https://github.com/cheminfo/openchemlib-js)(Last tested on 5.6.0)
 
@@ -183,7 +182,7 @@ Container class for functional groups.
 | Property | Type | Description |
 | --- | --- | --- |
 | molFile | *string* | Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups
-| `atoms | *array[[Atom]]* | List of molecule's atoms
+| atoms | *array[[Atom]]* | List of molecule's atoms
 | bonds | *array[[Bond]]* | List of molecule's bonds
 | fGroups | *array[[fGroup]]* | List of molecule's functional groups
 | bondLength | *int* | Average length of bonds in molecule. Can set this to 'scale' molecule
@@ -206,12 +205,82 @@ Container class for functional groups.
 
 ### ( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container, *object-like* dims[, *object* params ] )
 
+### Optional Parameters
+
+| Parameter | Default | Description |
+| --- | --- |
+| zoomable | true | Enables manipulation of SVG by mouse/touch |
+| zoomSmooth | 300 | Duration of zoom transition |
+| zoomEase | d3.easeCircleOut | D3 easing function for zoom transition |
+| showIndices | false | Show atom indices |
+| showHydrogen | true | Show hydrogens |
+
+### Properties
+
+---
+
+| Property | Type | Description |
+| --- | --- | --- |
+| Molecule | [Molecule] |  |
+| Container | *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* |  |
+| dims | *obj* | Dimensions of SVG ViewBox, in form of { x, y, width, height } |
+| bondScale | *int* | Another layer of scaling the molecule. See [Molecule] => bondLength |
+
+**Internal, but modifyable**
+
+| Property | Type | Description |
+| --- | --- | --- |
+| stylesheet | *string* | Styles used by 2D molecule. Applied to DOM after .init() |
+| _onWindowResize | *function* | Callback fired during window being resized. There if you need to change it. |
+
+### Methods
+
+---
+
+| Method | Arguments | Returns | Description |
+| --- | --- | --- | --- |
+| init | *none* | self | Initialises SVG, adding stylesheet to DOM |
+| draw | *none* | self | Renders SVG, adds to .Container |
+| genMolecule | *none* | [SVGGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGGElement) | Generates an SVG Group containing all molecule elements |
+| fitToScreen | *none* | void | Fits SVG to current container |
+
 ---
 ---
 
 ## Mol3D
 
 ### ( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container[, *object* params ] )
+
+### Optional Parameters
+
+| Parameter | Default | Description |
+| --- | --- |
+| disableInteractions | false | Disable interactions with 3D canvas |
+| showfGroups | true | Show functional groups on molecule |
+| showHs | true | Show hydrogens on molecule |
+| showStats | false | Show a performance counter in the corner of your page to monitor page stats |
+| highlight | true | |
+| autoRotate | false | |
+| highlightSync | false | |
+| mouseoverDispatch | false | |
+| labelTrack | true | |
+
+### Properties
+
+---
+
+| Property | Type | Description |
+| --- | --- | --- |
+| Molecule | [Molecule] |  |
+| Container | *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* |  |
+| Scene | *three.js Scene* | Dimensions of SVG ViewBox, in form of { x, y, width, height } |
+| molGroup | *three.js Group* | Group of all molecule objects in Scene |
+| [atomCols] | Proxy | List default colours for atoms. See further info |
+
+
+### Methods
+
+---
 
 
 [Atom]: #atom

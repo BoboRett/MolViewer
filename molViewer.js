@@ -283,7 +283,7 @@
 	})
 
 	/////2D canvas objects/////
-	function Mol2D( molecule, container, dims, params ){
+	function Mol2D( molecule, Container, dims, params ){
 
 		params = params || {};
 
@@ -291,24 +291,17 @@
 
 		this._initialised = false;
 		this._bondScale = 50;
-		this._scaleBox = { width :0, height: 0 };
-		dims = dims !== undefined ? dims : [ 0, 0, container.getBoundingClientRect().width, container.getBoundingClientRect().height ];
+		this._scaleBox = { width : 0, height: 0 };
+		dims = dims !== undefined ? dims : [ 0, 0, Container.getBoundingClientRect().width, Container.getBoundingClientRect().height ];
 		this.dims = { x: dims[0], y: dims[1], width: dims[2], height: dims[3] };
-		this.Container = container;
-		this.molecule = molecule;
+		this.Container = Container;
+		this.Molecule = molecule;
 
 		this.zoomable = params.zoomable !== undefined ? params.zoomable : true;
 		this.showIndices = params.showIndices !== undefined ? params.showIndices : false;
-		this.showHs = params.showHydrogen !== undefined ? params.showHydrogen : true;
-
-		this.zoomFunc = d3.zoom().on( "zoom", function(){
-
-			self.root.transition()
-				.duration( 300 )
-				.ease( d3.easeCircleOut )
-				.attr( "transform", d3.event.transform )
-
-		})
+		this.showHs = params.showHs !== undefined ? params.showHs : true;
+		this.zoomSmooth = params.zoomSmooth !== undefined ? params.zoomSmooth : 300;
+		this.zoomEase = params.zoomEase !== undefined ? params.zoomEase : d3.easeCircleOut;
 
 		this.stylesheet = `
 			#view2d {
@@ -404,7 +397,8 @@
 
 			if( this._initialised ) console.warn( "Molecule already initialised!" );
 
-			d3.select( "#molViewer2DCSS" ).empty() && d3.select( "head" ).append( "style" ).attr( "id", "molViewer2DCSS" ).html( this.stylesheet );
+			d3.select( "#molViewer2DCSS" ).remove();
+			d3.select( "html" ).append( "style" ).attr( "id", "molViewer2DCSS" ).html( this.stylesheet );
 			this._initialised = true;
 
 			return this
@@ -433,8 +427,8 @@
 
 		genMolecule: function(){
 
-			const atoms = this.molecule.atoms;
-			const bonds = this.molecule.bonds;
+			const atoms = this.Molecule.atoms;
+			const bonds = this.Molecule.bonds;
 			const bondScale = this.bondScale;
 
 			const root = d3.create( "svg:g" )
@@ -445,18 +439,16 @@
 			root.append( "g" )
 				.attr( "class", "atoms" )
 				.selectAll( "g" )
-				.data( this.molecule.atoms )
+				.data( this.Molecule.atoms )
 				.enter()
 				.each( drawAtom )
-
-			//atoms.forEach( drawAtom );
 
 			//////BONDS//////
 			const labelOffset = 8;
 			const bondsroot = root.append( "g" )
 				.attr( "class", "bonds" )
 				.selectAll( "g" )
-				.data( this.molecule.bonds )
+				.data( this.Molecule.bonds )
 				.enter()
 				.each( drawBond )
 
@@ -653,19 +645,24 @@
 		},
 
 		fitToScreen: function(){
+
+			const zoomfn = d3.zoom().on( "zoom", () => {
+
+				this.root.transition()
+					.duration( this.zoomSmooth )
+					.ease( this.zoomEase )
+					.attr( "transform", d3.event.transform )
+
+			})
+
 			this.root.attr( "transform", null ) ;
 			const viewBox = this.root.node().parentNode.viewBox.baseVal;
 			const rootBox = this.root.node().getBBox();
 
 			const zoom = viewBox.width/rootBox.width < viewBox.height/rootBox.height ? viewBox.width/rootBox.width : viewBox.height/rootBox.height;
 
-			this.svg.call( this.zoomFunc.transform, d3.zoomIdentity.translate( viewBox.width/2 + ( - ( rootBox.x - viewBox.x ) - rootBox.width/2 )*zoom, viewBox.height/2 + ( - ( rootBox.y - viewBox.y ) - rootBox.height/2 )*zoom ).scale( zoom ) )
-			this.svg.call( this.zoomFunc );
-		},
-
-		showLabels: function( show ){
-
-			d3.selectAll( ".atomind" ).attr( "display", show ? null : "none" );
+			this.svg.call( zoomfn.transform, d3.zoomIdentity.translate( viewBox.width/2 + ( - ( rootBox.x - viewBox.x ) - rootBox.width/2 )*zoom, viewBox.height/2 + ( - ( rootBox.y - viewBox.y ) - rootBox.height/2 )*zoom ).scale( zoom ) )
+			this.svg.call( zoomfn );
 
 		},
 
@@ -715,6 +712,34 @@
 
 		},
 
+		"zoomSmooth": {
+
+		    get: function(){ return this._zoomSmooth },
+
+		    set: function( value ){
+
+				if( +value === +value ){
+
+					this._zoomSmooth = value;
+
+				} else{
+
+					console.warn( "zoomSmooth must be an integer!" );
+
+				}
+
+			}
+
+		},
+
+		"zoomEase": {
+
+		    get: function(){ return this._zoomEase },
+
+		    set: function( value ){ this._zoomEase = value }
+
+		},
+
 		"showIndices": {
 
 			get: function () {
@@ -728,12 +753,7 @@
 				this._showIndices = value;
 				if( !this.root ) return;
 
-				this.root.selectAll( ".atomind" ).each( function(){
-
-					d3.select( this ).attr( "display", value ? null : "none" );
-
-				})
-
+				this.root.selectAll( ".atomind" ).attr( "display", value ? null : "none" );
 
 			}
 
@@ -781,7 +801,7 @@
 
 		this.Container    = container || null;
 		this.Molecule     = molecule;
-		this.scene        = new THREE.Scene();
+		this.Scene        = new THREE.Scene();
 		this.mouse        = new THREE.Vector2();
 		this.molGroup     = new THREE.Group();
 		this.animID;
@@ -793,8 +813,6 @@
 				font-size: 16px;
 			}
 		`
-
-		d3.select( "#molViewer3DCSS" ).empty() && d3.select( "head" ).append( "style" ).attr( "id", "molViewer3DCSS" ).html( this.stylesheet );
 
 		this.frameFunctions = {
 			//////Scene controller (ONLY TOUCH IF YOU KNOW WHAT YOU'RE DOING)//////
@@ -1150,7 +1168,7 @@
 			self.camActive.updateProjectionMatrix();
 			self.renderer.setSize( elBox.width, elBox.height );
 			self.controls.screen = { left: elBox.left, top: elBox.top, width: elBox.width, height: elBox.height };
-			self.effect.render( self.scene, self.camActive );
+			self.effect.render( self.Scene, self.camActive );
 
 		}
 
@@ -1158,7 +1176,7 @@
 
 			Object.values( self.frameFunctions ).forEach( el => el.enabled && el.fn( self ) )
 
-			self.effect.render( self.scene, self.camActive );
+			self.effect.render( self.Scene, self.camActive );
 
 		}
 
@@ -1170,6 +1188,9 @@
 		init: function(){
 
 			if( this._initialised ){ console.warn( "Molecule already initialised!" ); return }
+
+			d3.select( "#molViewer3DCSS" ).empty();
+			d3.select( "html" ).append( "style" ).attr( "id", "molViewer3DCSS" ).html( this.stylesheet );
 
 			if( this._DOM ){
 
@@ -1188,7 +1209,7 @@
 				const directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
 				directionalLight.position.set( 3, 3, 3 );
 				directionalLight.name = "KeyLight";
-				this.scene.add( directionalLight );
+				this.Scene.add( directionalLight );
 
 				//////RENDERER SETUP//////
 				this.renderer = new THREE.WebGLRenderer( {antialias: true, alpha: true} );
@@ -1230,9 +1251,9 @@
 			else if( !this._initialised ){ console.warn( "3D Container needs initialising. Call .init() before attempting to draw." ) }
 			else{
 
-				this.scene.remove( this.molGroup );
+				this.Scene.remove( this.molGroup );
 				this.molGroup = this.genGroup( this._molecule );
-				this.scene.add( this.molGroup );
+				this.Scene.add( this.molGroup );
 				this.showHs = this.showHs;
 				this.resetView();
 
@@ -1254,8 +1275,8 @@
 
 			if( this.animID ){ this.pause() };
 
-			this.scene.children.forEach( obj => this.scene.remove( obj ) );
-			this.scene = null;
+			this.Scene.children.forEach( obj => this.Scene.remove( obj ) );
+			this.Scene = null;
 
 			this.renderer.domElement.remove();
 			this.renderer.dispose();
@@ -1674,7 +1695,7 @@
 
 			set: function( value ){
 
-				this.scene.traverse( obj => {
+				this.Scene.traverse( obj => {
 					if( obj.userData.type === "fGroup" ){
 						obj.visible = value
 					}
