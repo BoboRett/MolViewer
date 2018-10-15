@@ -33,7 +33,9 @@ Without knowing anything, you can get a molecule floating in your webpage with t
 
 <script src="https://d3js.org/d3.v5.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@v0.5/molViewer.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@v0.51/molViewer.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/effects/OutlineEffect.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/controls/OrbitControls.js"></script>
 
 <script>
     const Molecule = new MolViewer.Molecule().get3DFromSMILE( "C1CCC(N)C" )
@@ -44,13 +46,16 @@ Without knowing anything, you can get a molecule floating in your webpage with t
 
 ## Prerequisites
 
-To utilise this entire library, you'll need 3 other JavaScript modules.
+To utilise this entire library, you'll need 5 other JavaScript modules.
 * [D3](https://d3js.org/)(Last tested on v5.7.0)
 
     *Essential* for 2D drawing
-* [three.js](https://threejs.org/)(Last tested on r97)
+* [three.js - Core](https://threejs.org/)(Last tested on r97)
 
     *Essential* for 3D drawing
+* [three.js - OutlineEffect](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/effects/OutlineEffect.js)
+* [three.js - Orbit Controls](https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/examples/js/controls/OrbitControls.js)
+
 * [OpenChemLib](https://github.com/cheminfo/openchemlib-js)(Last tested on 5.6.0)
 
     Fairly optional. Just required to convert Smile string into 2D.
@@ -104,7 +109,7 @@ Or, if my webpages were kept nested inside a project folder:
 
 ## Atom
 
-### MolViewer.Atom( [*int* index, *array* position, *string* element, *int* charge = 0] )
+### ( [ *int* index, *array* position, *string* element, *int* charge = 0 ] )
 
 Container class for Atoms.
 
@@ -126,7 +131,7 @@ Container class for Atoms.
 
 ## Bond
 
-### MolViewer.Bond( [*int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0] )
+### ( [ *int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0 ] )
 
 Container class for Bonds.
 
@@ -150,7 +155,7 @@ Container class for Bonds.
 
 ## fGroup
 
-### MolViewer.fGroup( [*[Atom]* source, *array[[Atom]]* domain, *array[[Bond]]* claimed, *string* type ] )
+### ( [ *[Atom]* source, *array[[Atom]]* domain, *array[[Bond]]* claimed, *string* type ] )
 
 Container class for functional groups.
 
@@ -169,7 +174,7 @@ Container class for functional groups.
 
 ## Molecule
 
-### MolViewer.Molecule( [*string* molFile] )
+### ( [ *string* molFile ] )
 
 ### Properties
 
@@ -178,7 +183,7 @@ Container class for functional groups.
 | Property | Type | Description |
 | --- | --- | --- |
 | molFile | *string* | Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups
-| atoms | *array[[Atom]]* | List of molecule's atoms
+| `atoms | *array[[Atom]]* | List of molecule's atoms
 | bonds | *array[[Bond]]* | List of molecule's bonds
 | fGroups | *array[[fGroup]]* | List of molecule's functional groups
 | bondLength | *int* | Average length of bonds in molecule. Can set this to 'scale' molecule
@@ -199,14 +204,14 @@ Container class for functional groups.
 
 ## Mol2D
 
-### MolViewer.Mol2D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container, *object-like* dims[, *object* params ] )
+### ( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container, *object-like* dims[, *object* params ] )
 
 ---
 ---
 
 ## Mol3D
 
-### MolViewer.Mol3D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container[, *object* params ] )
+### ( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container[, *object* params ] )
 
 
 [Atom]: #atom
