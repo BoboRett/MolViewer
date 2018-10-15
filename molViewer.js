@@ -13,6 +13,8 @@
 		this.element = element;
 		this.charge = charge;
 		this.bondedTo = [];
+		this.object2D = null;
+		this.object3D = null;
 
 	}
 
@@ -25,6 +27,8 @@
 		this.type = bondType;
 		this.direction = bondDirection;
 		this.claimed = false;
+		this.object2D = null;
+		this.object3D = null;
 
 	}
 
@@ -46,10 +50,10 @@
 
 		} else{
 
-			this._molFile = null;
 			this.atoms = [];
 			this.bonds = [];
 			this.fGroups = [];
+			this._molFile = null;
 
 		}
 
@@ -230,11 +234,12 @@
 
 		},
 
-		get2DFromSMILE: function( smile, addH ){
+		get2DFromSMILE: function( smile, addHydrogens ){
 
 			let molecule = OCL.Molecule.fromSmiles( smile );
-			addH && molecule.addImplicitHydrogens();
-			this.molfile = molecule.toMolfile();
+			addHydrogens && molecule.addImplicitHydrogens();
+			console.log( molecule.toMolfile() );
+			this.molFile = molecule.toMolfile();
 
 			return this
 
@@ -552,8 +557,7 @@
 
 				}
 
-				atom.obj2D = atomGrp.node();
-				atom.highlightCircle = highlightCircle.node()
+				atom.object2D = atomGrp.node();
 
 			}
 
@@ -676,8 +680,7 @@
 
 				}
 
-				bond.obj2D = bondGrp.node();
-				bond.highlight = highlight.node();
+				bond.object2D = bondGrp.node();
 
 			}
 
@@ -901,7 +904,7 @@
 
 						if( obj.userData.source instanceof MolViewer.fGroup ){
 
-							obj.userData.source.domain.forEach( atom => atom.obj3D.children[0].material = mat );
+							obj.userData.source.domain.forEach( atom => atom.object3D.children[0].material = mat );
 
 						}
 
@@ -1336,7 +1339,7 @@
 				mesh.userData.type = "atom";
 				mesh.userData.source = el;
 
-				el.obj3D = mesh;
+				el.object3D = mesh;
 
 				group.push( mesh );
 
@@ -1466,7 +1469,7 @@
 
 				mesh.position.copy( el.start.pos );
 
-				el.obj3D = mesh;
+				el.object3D = mesh;
 
 				group.push( mesh );
 
