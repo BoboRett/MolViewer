@@ -28,18 +28,19 @@ Feel free to send me any examples that could be featured here.
 ## Quick Start
 
 Without knowing anything, you can get a molecule floating in your webpage with the following:
+```
+<div id="mol3D"></div>
 
-    <div id="mol3D"></div>
+<script src="https://d3js.org/d3.v5.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@v0.5/molViewer.js"></script>
 
-    <script src="https://d3js.org/d3.v5.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/mrDoob/three.js@r97/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@v0.5/molViewer.js"></script>
+<script>
+    const Molecule = new MolViewer.Molecule().get3DFromSMILE( "C1CCC(N)C" )
 
-    <script>
-        const Molecule = new MolViewer.Molecule().get3DFromSMILE( "C1CCC(N)C" )
-
-        const Mol3D = new MolViewer.Mol3D( Molecule, document.getElementById( "mol3D" ) ).init().draw()
-    </script>
+    const Mol3D = new MolViewer.Mol3D( Molecule, document.getElementById( "mol3D" ) ).init().draw()
+</script>
+```
 
 ## Prerequisites
 
@@ -64,15 +65,15 @@ Github itself can't be used as a CDN (content delivery network), so linking stra
 ---
 The easiest thing is to just yank the script off of a wonderful free CDN that is hooked into Github. Normally, I'd suggest RawGit, but apparently CryptoMiners ruined that for everyone, so the next best thing I can find would be [jsDelivr](https://www.jsdelivr.com/).  
 A simple template:
-
-    <script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@INSERTVERSIONNAMEHERE/molViewer.js"></script>
-
+```
+<script src="https://cdn.jsdelivr.net/gh/BoboRett/MolViewer@INSERTVERSIONNAMEHERE/molViewer.js"></script>
+```
 ---
 ---
 You *can* download the file and host it for your own needs. If you put it in the same folder as your webpage itself, then it's a simple:
-
-    <script src="molViewer.js"></script>
-
+```
+<script src="molViewer.js"></script>
+```
 ---
 Otherwise, you can navigate around relative to your page with a mix of .'s and //'s. For instance, if I had my webpage in a folder, and my scripts in a subfolder, it may look like:
 
@@ -81,10 +82,9 @@ Otherwise, you can navigate around relative to your page with a mix of .'s and /
     * **Scripts**
         * molViewer.js
 
-
-
-    <script src="Scripts/molViewer.js"></script>
-
+```
+<script src="Scripts/molViewer.js"></script>
+```
 ---
 Or, if my webpages were kept nested inside a project folder:
 
@@ -94,52 +94,59 @@ Or, if my webpages were kept nested inside a project folder:
     * **Scripts**
         * molViewer.js
 
-
-
-    <script src="../Scripts/molViewer.js"></script>
-    (../ means 'up' a folder to get us to the project's root directory)
-
+```
+<script src="../Scripts/molViewer.js"></script>
+(../ means 'up' a folder to get us to the project's root directory)
+```
 ---
 
 # API
 
-## Atom( [*int* index, *array* position, *string* element, *int* charge = 0] )
+## Atom
+
+### MolViewer.Atom( [*int* index, *array* position, *string* element, *int* charge = 0] )
 
 Container class for Atoms.
 
-#### Properties
----
-#### *int* *Atom*.index
+### Properties
 
-#### *obj* *Atom*.pos
+---
+
+### *int* *Atom*.index
+
+### *obj* *Atom*.pos
 
 Vector-like: { x, y, z }
 
-#### *string* *Atom*.element
+### *string* *Atom*.element
 
-#### *int* *Atom*.charge
+### *int* *Atom*.charge
 
-#### *array* *Atom*.bondedTo
+### *array* *Atom*.bondedTo
 
   Gives an array of connections with Atom, in form of { bond, pairedAtom }
 
-#### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Atom*.object2D
+### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Atom*.object2D
 
 SVG element that corresponds to Atom
 
-#### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Atom*.object3D
+### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Atom*.object3D
 
 Object that corresponds to Atom
 
 ---
 ---
 
-## Bond( [*int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0] )
+## Bond
+
+### MolViewer.Bond( [*int* index, *Atom* bondStart, *Atom* bondEnd, *int* bondType = 1, *int* bondDirection = 0] )
 
 Container class for Bonds.
 
-#### Properties
+### Properties
+
 ---
+
 ### *int* *Bond*.index
 
 ### *[Atom]* *Bond*.start
@@ -176,7 +183,9 @@ Object that corresponds to Bond
 ---
 ---
 
-### fGroup( [*[Atom]* source, *array[[Atom]]* domain, *array[[Bond]]* claimed, *string* type ] )
+## fGroup
+
+### MolViewer.fGroup( [*[Atom]* source, *array[[Atom]]* domain, *array[[Bond]]* claimed, *string* type ] )
 
 Container class for functional groups.
 
@@ -195,7 +204,12 @@ Container class for functional groups.
 
    List of bonds owned by group
 
-### Molecule( [*string* molFile] )
+---
+---
+
+## Molecule
+
+### MolViewer.Molecule( [*string* molFile] )
 
 ### Properties
 ---
@@ -204,52 +218,66 @@ Container class for functional groups.
 
 Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups.
 
-##### *array[[Atom]]* *Molecule*.atoms
+### *array[[Atom]]* *Molecule*.atoms
 
-##### *array[[Bond]]* *Molecule*.bonds
+### *array[[Bond]]* *Molecule*.bonds
 
-##### *array[[fGroup]]* *Molecule*.fGroups
+### *array[[fGroup]]* *Molecule*.fGroups
 
 Array of molecule's functional groups, in form of {}
 
-##### *int* *Molecule*.bondLength
+### *int* *Molecule*.bondLength
 
 Average length of bonds in molecule. Can change this to 'scale' molecule.
 
 
-#### Methods
+### Methods
 
-##### *Molecule*.parseMol( *string* molFile )
+---
+
+### *Molecule*.parseMol( *string* molFile )
 
 Parses provided MOL file, extracting molecule information and populating self.  
 Returns array of found [[Atom]s, [Bond]s]
 
-##### *Molecule*.fGroupSearcher()
+### *Molecule*.fGroupSearcher()
 
 Scans molecule for functional groups.  
 Returns array of found [fGroup]s
 
-##### *Molecule*.get2DFromSMILE( *string* smile[, *bool* addHydrogens ] )
+### *Molecule*.get2DFromSMILE( *string* smile[, *bool* addHydrogens ] )
 
 Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 2D coordinates.
 Use **addHydrogens** to generate implicit hydrogens with molecule.  
 ***Requires OpenChemLib, see [Prerequisites](#prerequisites)***  
 
-##### *Molecule*.get3DFromSMILE( *string* smile )
+### *Molecule*.get3DFromSMILE( *string* smile )
 
 Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 3D coordinates  
     ***Gets conversion via [NIH - National Cancer Institute](https://cactus.nci.nih.gov/translate/)***  
 
-##### *Molecule*.centre()
+### *Molecule*.centre()
 
   Centres molecule around 0,0,0 if molfile coordinates are iffy
 
-### Mol2D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container, *object-like* dims[, *object* params ] )
+---
+---
 
-### Mol3D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container[, *object* params ] )
+## Mol2D
+
+### MolViewer.Mol2D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container, *object-like* dims[, *object* params ] )
+
+---
+---
+
+## Mol3D
+
+### MolViewer.Mol3D( *Molecule* molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* container[, *object* params ] )
 
 
-[Atom]: #atom-int-index-array-position-string-element-int-charge--0-
-[Bond]: #bond-int-index-atom-bondstart-atom-bondend-int-bondtype--1-int-bonddirection--0-
-[fGroup]: #fgroup-atom-source-arrayatom-domain-arraybond-claimed-string-type--
-[Molecule]: #Molecule-string-molfile-
+[Atom]: #atom
+[Bond]: #bond
+[fGroup]: #fgroup
+[Molecule]: #molecule
+[Mol2D]: #mol2d
+[Mol3D]: #mol3d
