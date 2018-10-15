@@ -553,6 +553,13 @@
 				const bondGrp = d3.select( this ).append( "g" ).attr( "class", "bond_" + bond.type );
 				const theta = Math.atan2( posEnd.y - posStart.y, posEnd.x - posStart.x );
 
+				const coords = [posStart.x + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.cos( theta ) : 0 ),
+								posEnd.x - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.cos( theta ) : 0 ),
+								posStart.y + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.sin( theta ) : 0 ),
+								posEnd.y - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.sin( theta ) : 0 )];
+
+				const length = Math.hypot( coords[1] - coords[0], coords[2] - coords[3] );
+
 				const highlight = bondGrp.append( "rect" )
 					.attr( "x", -bondScale/6 ).attr( "y", -bondScale/6 )
 					.attr( "rx", bondScale/10 ).attr( "ry", bondScale/10 )
@@ -561,10 +568,6 @@
 					.attr( "class", "highlight" )
 					.attr( "id", "highlight_" + bond.start.index + "_" + bond.end.index );
 
-				const coords = [posStart.x + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.cos( theta ) : 0 ),
-								posEnd.x - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.cos( theta ) : 0 ),
-								posStart.y + ( bond.start.element !== "C" || bond.start.charge ? bond.start.element.length * labelOffset * Math.sin( theta ) : 0 ),
-								posEnd.y - ( bond.end.element !== "C" || bond.end.charge ? bond.end.element.length * labelOffset * Math.sin( theta ) : 0 )]
 
 				const placeholderLine = bondGrp.append( "line" )
 						.attr( "class", "bondline")
@@ -596,7 +599,6 @@
 							case 6: //hash bond
 
 								tmp = bondGrp.attr( "class", "bond_hash" );
-								const length = Math.hypot( coords[1] - coords[0], coords[2] - coords[3] );
 								let point = [0, 0];
 								for( let i = 0; Math.hypot( ...point ) < length ; i++ ){
 									tmp.append( "line" ).attr( "class", "bond" )
@@ -961,15 +963,19 @@
 			},
 			//////Attach labels to atoms in 3d//////
 			labelTrack: {enabled: false, props: { labels: [] }, fn: function( self ){
+
 					var widthHalf = self._DOM.getBoundingClientRect().width/2;
 					var heightHalf = self._DOM.getBoundingClientRect().height/2;
+
 					for( label of this.props.labels ){
 						var vector = new THREE.Vector3().setFromMatrixPosition( label.datum().object.matrixWorld );
 						vector.project( self.camActive );
 
 						label.style("right", ( - ( vector.x * widthHalf ) + widthHalf ) + "px" )
 						label.style("bottom", ( ( vector.y * heightHalf ) + heightHalf ) + "px" )
+
 					}
+
 				}
 			}
 		}
