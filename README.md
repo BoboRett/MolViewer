@@ -112,28 +112,15 @@ Container class for Atoms.
 
 ---
 
-### *int* *Atom*.index
-
-### *obj* *Atom*.pos
-
-Vector-like: { x, y, z }
-
-### *string* *Atom*.element
-
-### *int* *Atom*.charge
-
-### *array* *Atom*.bondedTo
-
-  Gives an array of connections with Atom, in form of { bond, pairedAtom }
-
-### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Atom*.object2D
-
-SVG element that corresponds to Atom
-
-### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Atom*.object3D
-
-Object that corresponds to Atom
-
+| Property | Type | Description |
+| --- | --- | --- |
+| index | *int* | Atom index, starts at 0 |
+| pos | *obj* | Atom position, in form of { x, y, z } |
+| element | *string* | Atom element, i.e. C, N, Cl |
+| charge | *int* | Atom parity |
+| bondedTo | *array* | Gives an array of connections with Atom, in form of { bond, pairedAtom } |
+| object2D | *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* | SVG element that corresponds to Atom |
+| object3D | *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* | Object that corresponds to Atom |
 ---
 ---
 
