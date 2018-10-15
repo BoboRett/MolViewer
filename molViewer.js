@@ -28,6 +28,15 @@
 
 	}
 
+	//////Functional Group object//////
+	function fGroup( domain, claimed, type ){
+
+		this.type = type;
+		this.domain = domain;
+		this.claimed = claimed;
+
+	}
+
 	/////Molecule object/////
 	function Molecule( molData ){
 
@@ -117,34 +126,34 @@
 			return [mol.atoms, mol.bonds];
 		},
 
-		fGroupSearcher: function( mol ){
+		fGroupSearcher: function(){
 
 			let fGroups = []
 
 			let subStructures = [
-								 {type: "Carboxylic Acid", root: "C", bonds:[{el: "O", btype: "2"}, {el: "O", btype: "1", bondedTo:[{el: "H", btype: "1"}]}]},
-								 {type: "Ester", root: "C", bonds:[{el: "O", btype: "2"}, {el: "O", btype: "1", bondedTo:[{el: "R", btype: "1"}]}]},
-								 {type: "Amide", root: "C", bonds:[{el: "O", btype: "2"}, {el: "N", btype: "1", bondedTo:[{el: "R", btype: "1"}, {el: "R", btype: "1"}]}]},
+								 {type: "Carboxylic Acid", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "H", btype: 1}]}]},
+								 {type: "Ester", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "R", btype: 1}]}]},
+								 {type: "Amide", root: "C", bonds:[{el: "O", btype: 2}, {el: "N", btype: 1, bondedTo:[{el: "R", btype: 1}, {el: "R", btype: 1}]}]},
 
-								 {type: "Acyl Halide", root: "C", bonds:[{el: "O", btype: "2"}, {el: "X", btype: "1"}]},
+								 {type: "Acyl Halide", root: "C", bonds:[{el: "O", btype: 2}, {el: "X", btype: 1}]},
 
-								 {type: "Aldehyde", root: "C", bonds:[{el: "O", btype: "2"}, {el: "H", btype: "1"}]},
-								 {type: "Ketone", root: "C", bonds:[{el: "O", btype: "2"}]},
+								 {type: "Aldehyde", root: "C", bonds:[{el: "O", btype: 2}, {el: "H", btype: 1}]},
+								 {type: "Ketone", root: "C", bonds:[{el: "O", btype: 2}]},
 
-								 {type: "Primary Amine", root: "N", bonds:[{el: "H", btype: "1"},{el: "H", btype: "1"}]},
-								 {type: "Secondary Amine", root: "N", bonds:[{el: "H", btype: "1"},{el: "R", btype: "1"}]},
-								 {type: "Tertiary Amine", root: "N", bonds:[{el: "R", btype: "1"},{el: "R", btype: "1"}]},
+								 {type: "Primary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "H", btype: 1},{el: "R", btype: 1}]},
+								 {type: "Secondary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
+								 {type: "Tertiary Amine", root: "N", bonds:[{el: "R", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
 
-								 {type: "Nitro", root: "N", bonds:[{el: "O", btype: "2"},{el: "O", btype: "1"}]},
-								 {type: "Alcohol", root: "O", bonds:[{el: "H", btype: "1"}]},
-								 {type: "Halo", root: "R", bonds:[{el: "X", btype: "1"}]},
-								 {type: "Nitrile", root: "C", bonds:[{el: "N", btype: "3"}]},
+								 {type: "Nitro", root: "N", bonds:[{el: "O", btype: 2},{el: "O", btype: 1}]},
+								 {type: "Alcohol", root: "O", bonds:[{el: "H", btype: 1}]},
+								 {type: "Halo", root: "R", bonds:[{el: "X", btype: 1}]},
+								 {type: "Nitrile", root: "C", bonds:[{el: "N", btype: 3}]},
 
-								 {type: "Acetal", root: "C", bonds:[{el: "O", btype: "1"}, {el: "O", btype: "1"}]},
-								 {type: "Ether", root: "O", bonds:[{el: "R", btype: "1"},{el: "R", btype: "1"}]},
+								 {type: "Acetal", root: "C", bonds:[{el: "O", btype: 1}, {el: "O", btype: 1}]},
+								 {type: "Ether", root: "O", bonds:[{el: "R", btype: 1},{el: "R", btype: 1}]},
 								];
 
-			mol.atoms.filter( atom => atom.element != "H" ).forEach( function( atom ){
+			this.atoms.filter( atom => atom.element != "H" ).forEach( atom => {
 				let scanning = true
 
 				while( scanning ){
@@ -154,10 +163,10 @@
 
 						let foundStructures = inBonds( atom, ss.bonds, atom.index, [] );
 
-						if( foundStructures.hasOwnProperty( "source" ) ){
+						if( foundStructures ){
 							foundStructures.type = ss.type;
 							fGroups = fGroups.concat( foundStructures );
-							foundStructures.claimed.map( el => {mol.bonds[el.index].claimed = true} )
+							foundStructures.claimed.map( el => {this.bonds[el.index].claimed = true} )
 							scanning = true;
 							break;
 						}
@@ -171,41 +180,46 @@
 			function inBonds( source, subStruct, rootIndex, domain ){
 
 				let claimed = [];
+				let results;
 
 				subStruct.forEach( function( ss ){
 
 					ss.found = false;
-					source.bondedTo.filter( bond => bond.el.index !== rootIndex && !domain.map( dom => dom.index ).includes( bond.el.index ) && bond.bond.claimed === false ).forEach( function( bond ){
-						if( !ss.found && bond.bond.type === ss.btype ){
-							if( ( ss.el === "R" ? true : ( ss.el === "X" ? ["Cl", "Br", "I", "F"].includes( bond.el.element ) : bond.el.element === ss.el ) ) ){
+					source.bondedTo
+						.filter( bond => bond.el.index !== rootIndex && !domain.map( dom => dom.index ).includes( bond.el.index ) && bond.bond.claimed === false )
+						.forEach( function( bond ){
 
-								domain.push( bond.el );
-								claimed.push( bond.bond );
+							if( !ss.found && bond.bond.type === ss.btype ){
+								if( ( ss.el === "R" ? true : ( ss.el === "X" ? ["Cl", "Br", "I", "F"].includes( bond.el.element ) : bond.el.element === ss.el ) ) ){
 
-								if( ss.hasOwnProperty( "bondedTo" ) ){
+									domain.push( bond.el );
+									claimed.push( bond.bond );
 
-									//////Recursive search//////
-									const deepSearch = inBonds( bond.el , ss.bondedTo, rootIndex, domain );
+									if( ss.hasOwnProperty( "bondedTo" ) ){
 
-									if( deepSearch.hasOwnProperty( "source" ) ){
-										claimed = claimed.concat( deepSearch.claimed );
+										//////Recursive search//////
+										const deepSearch = inBonds( bond.el , ss.bondedTo, rootIndex, domain );
+
+										if( deepSearch ){
+											claimed = claimed.concat( deepSearch.claimed );
+											ss.found = true;
+										}
+
+									} else{
 										ss.found = true;
 									}
 
-								} else{
-									ss.found = true;
 								}
-
 							}
-						}
-					})
+
+						})
 
 				})
 
 				if( subStruct.filter( el => !el.found ).length < 1 ){
-					results = {source: source, domain: domain, claimed: claimed};
+					results = new MolViewer.fGroup( [source].concat( domain ), claimed );
 				} else{
-					results = []
+					results = null;
 				}
 
 				return results
@@ -838,45 +852,58 @@
 				}
 			},
 			//////Highlight elements on hover//////
-			highlight: {enabled: false, props: { _intersected: null }, fn: function( self ){
+			highlight: {enabled: false, props: { _intersected: null, _storedMat: null }, fn: function( self ){
 
 					var raycaster = new THREE.Raycaster();
 					raycaster.setFromCamera( self.mouse, self.camActive );
 
 					const intersects = raycaster.intersectObjects( self.molGroup.children, true );
 
-					if( self.mouse.x > -1 && self.mouse.x < 1 && self.mouse.y > -1 && self.mouse.y < 1 && intersects.length > 0){
+					if( self.mouse.x > -1 && self.mouse.x < 1 && self.mouse.y > -1 && self.mouse.y < 1 ){
 
-						if( this.props._intersected ){
+						if( intersects.length > 0 ){
 
-							this.props._intersected.material = this.props._intersected.currentMat;
-							this.props._intersected.material.dispose();
+							if( intersects[0].object instanceof THREE.Mesh ){
 
-						};
+								if( this.props._intersected !== intersects[0] ){
 
-						if( intersects[0].object instanceof THREE.Mesh ){
+									setMaterial( this.props._intersected, this.props._storedMat );
 
-							this.props._intersected = intersects[0].object;
-							this.props._intersected.currentMat = this.props._intersected.material;
-							const mat = this.props._intersected.currentMat.clone()
-							mat.emissive.setHex( 0xff0000 )
-							this.props._intersected.material = mat;
+									this.props._storedMat = null;
+
+								}
+
+								this.props._intersected = intersects[0].object;
+								if( !this.props._storedMat ) this.props._storedMat = this.props._intersected.material;
+								const mat = this.props._storedMat.clone()
+								mat.emissive.setHex( 0xff0000 )
+
+								setMaterial( this.props._intersected, mat );
+
+							}
+
+
+						} else{
+
+							setMaterial( this.props._intersected, this.props._storedMat );
+
+							this.props._storedMat = null;
 
 						}
-						else{
 
-							this.props._intersected = null;
+					}
+
+					function setMaterial( obj, mat ){
+
+						if( !obj || !mat ) return;
+
+						obj.material = mat;
+
+						if( obj.userData.source instanceof MolViewer.fGroup ){
+
+							obj.userData.source.domain.forEach( atom => atom.obj3D.children[0].material = mat );
 
 						}
-
-					} else {
-
-						if( this.props._intersected ){
-
-							this.props._intersected.material = this.props._intersected.currentMat;
-							this.props._intersected.material.dispose();
-
-						};
 
 					}
 
@@ -907,7 +934,7 @@
 
 							case "fGroup":
 
-								self.hovered = d3.selectAll( "#highlight_" + highlighted.userData.source.source.index + ", " + highlighted.userData.source.domain.map( el =>  "#highlight_" + el.index ).join( ", " ) )
+								self.hovered = d3.selectAll( highlighted.userData.source.domain.map( el =>  "#highlight_" + el.index ).join( ", " ) )
 								break;
 
 							case "atom":
@@ -1239,7 +1266,7 @@
 				this.scene.remove( this.molGroup );
 				this.molGroup = this.genGroup( this._molecule );
 				this.scene.add( this.molGroup );
-				this.showHs = this._showHs;
+				this.showHs = this.showHs;
 				this.resetView();
 
 				if( this.animID ){ window.cancelAnimationFrame( this.animID ); this.animID = null; };
@@ -1275,7 +1302,7 @@
 
 			group.add( ...this.drawAtoms( molecule.atoms ) );
 			group.add( ...this.drawBonds( molecule.bonds ) );
-			this.drawFunctionalGroups( molecule.fGroups, group );
+			this.drawFunctionalGroups( molecule.fGroups, group ); //Gets added directly to atoms, doesn't need adding to entire group
 
 			return group
 
@@ -1451,9 +1478,9 @@
 
 		drawFunctionalGroups: function( fGroups, parentGroup ){
 
-			fGroups.forEach( function( el, i ){
+			fGroups.forEach( ( el, i ) => {
 
-				var hlmat = new THREE.MeshToonMaterial( {
+				const hlmat = new THREE.MeshToonMaterial( {
 							color: new THREE.Color().setHex( Math.random() * 0xffffff ),
 							transparent: true,
 							visible: true,
@@ -1461,26 +1488,19 @@
 							flatShading: true,
 						});
 
-				var hlmesh = new THREE.Mesh( new THREE.IcosahedronBufferGeometry( 0.5, 1 ), hlmat );
+				const hlgeo = new THREE.IcosahedronBufferGeometry( 0.5, 1 );
 
-				hlmesh.userData.tooltip = el.type;
-				hlmesh.userData.type = "fGroup";
+				el.domain.forEach( atom => {
 
-				el.domain.forEach( function( fGroupDomain ){
+					const hlmesh = new THREE.Mesh( hlgeo.clone(), hlmat );
+					hlmesh.userData.source = el;
+					hlmesh.userData.tooltip = el.type;
+					hlmesh.userData.type = "fGroup";
+					parentGroup.getObjectByName( atom.index ).add( hlmesh );
 
-					const hlmeshNEW = hlmesh.clone();
-					hlmeshNEW.userData.source = el;
-					parentGroup.getObjectByName( fGroupDomain.index ).add( hlmeshNEW );
-
-					hlmeshNEW.visible = this._showfGroups
+					hlmesh.visible = this.showfGroups
 
 				});
-
-				hlmesh.userData.source = el;
-
-				parentGroup.getObjectByName( el.source.index ).add( hlmesh )
-
-				hlmesh.visible = this._showfGroups
 
 			})
 
@@ -1675,6 +1695,8 @@
 					}
 				})
 
+				this._showHs = value;
+
 			}
 
 		},
@@ -1802,5 +1824,6 @@
 	exports.Molecule = Molecule;
 	exports.Atom = Atom;
 	exports.Bond = Bond;
+	exports.fGroup = fGroup;
 
 }))

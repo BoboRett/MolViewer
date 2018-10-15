@@ -24,7 +24,8 @@
 
 		Molecule: "default",
 		showHydrogens: true,
-		showIndices: false
+		showIndices: false,
+		showfGroups: true,
 
 	}
 
@@ -198,6 +199,7 @@
 
 	GUI.add( opts, "Molecule", { Default: "default", Penicillin: "pen", Glucose: "glucose", DNA: "dna" } ).onChange( drawMol );
 	GUI.add( opts, "showHydrogens" ).onChange( () => { mol3D.showHs = opts.showHydrogens; mol2D.showHs = opts.showHydrogens } );
+	GUI.add( opts, "showfGroups" ).onChange( () => { mol3D.showfGroups = opts.showfGroups } );
 	GUI.add( opts, "showIndices" ).onChange( () => { mol2D.showIndices = opts.showIndices } );
 
 	function drawMol(){
@@ -218,14 +220,20 @@
 
 			hud.text( "Active: " + detail.element + " - " + detail.index )
 
-		} else{
+		} else if( detail instanceof MolViewer.Bond ){
 
 			hud.text( "Active: Bond between " + detail.start.element + " - " + detail.start.index + " and " + detail.end.element + " - " + detail.end.index )
+
+		} else if( detail instanceof MolViewer.fGroup ){
+
+			hud.text( "Active: Functional Group '" + detail.type + "' containing " + detail.domain.map( atom => atom.element + " - " + atom.index ).join( ", " ) );
 
 		}
 
 
 	} );
+
+	document.addEventListener( "3DMouseout", () => d3.select( "#hud" ).text( "" ) );
 
     </script>
 </body>
