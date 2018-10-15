@@ -42,18 +42,19 @@
 	}
 
 	/////Molecule object/////
-	function Molecule( molData ){
+	function Molecule( molFile ){
 
-		if( molData ){
+		if( molFile ){
 
-			this.molFile = molData;
+			this.molFile = molFile;
+			this.parseMol();
 
 		} else{
 
 			this.atoms = [];
 			this.bonds = [];
 			this.fGroups = [];
-			this._molFile = null;
+			this.molFile = null;
 
 		}
 
@@ -62,13 +63,13 @@
 	/////Molecule methods/////
 	Object.assign( Molecule.prototype, {
 
-		parseMol: function( molData ){
+		parseMol: function(){
 
 			let mol = {};
-			molData = molData.split( "\n" ).map( el => el.trim() ).join( "\n")
-			const [numatoms,numbonds] = molData.split( "\n" )[3].match( /.{1,3}/g ).slice( 0, 2 ).map( el => parseInt( el ) );
+			molFile = this.molFile.split( "\n" ).map( el => el.trim() ).join( "\n")
+			const [numatoms,numbonds] = molFile.split( "\n" )[3].match( /.{1,3}/g ).slice( 0, 2 ).map( el => parseInt( el ) );
 
-			mol.atoms = molData.split( "\n" )
+			mol.atoms = molFile.split( "\n" )
 							.slice( 4, 4 + numatoms )
 							.map( function( el, i ){
 
@@ -82,7 +83,7 @@
 									)
 
 							});
-			mol.bonds = molData.split( "\n" )
+			mol.bonds = molFile.split( "\n" )
 							.slice( 4 + numatoms, 4 + numatoms + numbonds )
 							.map( function( el, i ){
 
@@ -99,7 +100,7 @@
 							});
 
 			//////CHARGES//////
-			molData.split( "\n" ).forEach( function( el, i ){
+			molFile.split( "\n" ).forEach( function( el, i ){
 				const line = el.match( /\S+/g )
 				if( line !== null ){
 
@@ -127,118 +128,99 @@
 					})
 			})
 
-			return [mol.atoms, mol.bonds];
-		},
+			const fGroupSearcher = () => {
 
-		fGroupSearcher: function(){
+				let fGroups = []
 
-			let fGroups = []
+				mol.atoms.filter( atom => atom.element != "H" ).forEach( atom => {
+					let scanning = true
 
-			let subStructures = [
-								 {type: "Carboxylic Acid", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "H", btype: 1}]}]},
-								 {type: "Ester", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "R", btype: 1}]}]},
-								 {type: "Amide", root: "C", bonds:[{el: "O", btype: 2}, {el: "N", btype: 1, bondedTo:[{el: "R", btype: 1}, {el: "R", btype: 1}]}]},
+					while( scanning ){
+						scanning = false
 
-								 {type: "Acyl Halide", root: "C", bonds:[{el: "O", btype: 2}, {el: "X", btype: 1}]},
+						for( ss of MolViewer.subStructure_Lib.filter( ss => ( ss.root === "R" ? true : ss.root === atom.element ) ) ) { //Filter out non-matching root atoms
 
-								 {type: "Aldehyde", root: "C", bonds:[{el: "O", btype: 2}, {el: "H", btype: 1}]},
-								 {type: "Ketone", root: "C", bonds:[{el: "O", btype: 2}]},
+							let foundStructures = inBonds( atom, ss.bonds, atom.index, [] );
 
-								 {type: "Primary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "H", btype: 1},{el: "R", btype: 1}]},
-								 {type: "Secondary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
-								 {type: "Tertiary Amine", root: "N", bonds:[{el: "R", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
-
-								 {type: "Nitro", root: "N", bonds:[{el: "O", btype: 2},{el: "O", btype: 1}]},
-								 {type: "Alcohol", root: "O", bonds:[{el: "H", btype: 1}]},
-								 {type: "Halo", root: "R", bonds:[{el: "X", btype: 1}]},
-								 {type: "Nitrile", root: "C", bonds:[{el: "N", btype: 3}]},
-
-								 {type: "Acetal", root: "C", bonds:[{el: "O", btype: 1}, {el: "O", btype: 1}]},
-								 {type: "Ether", root: "O", bonds:[{el: "R", btype: 1},{el: "R", btype: 1}]},
-								];
-
-			this.atoms.filter( atom => atom.element != "H" ).forEach( atom => {
-				let scanning = true
-
-				while( scanning ){
-					scanning = false
-
-					for( ss of subStructures.filter( ss => ( ss.root === "R" ? true : ss.root === atom.element ) ) ) { //Filter out non-matching root atoms
-
-						let foundStructures = inBonds( atom, ss.bonds, atom.index, [] );
-
-						if( foundStructures ){
-							foundStructures.type = ss.type;
-							fGroups = fGroups.concat( foundStructures );
-							foundStructures.claimed.map( el => {this.bonds[el.index].claimed = true} )
-							scanning = true;
-							break;
-						}
-
-					}
-				}
-
-			})
-
-			//////SEARCH BONDS OF ATOM//////
-			function inBonds( source, subStruct, rootIndex, domain ){
-
-				let claimed = [];
-				let results;
-
-				subStruct.forEach( function( ss ){
-
-					ss.found = false;
-					source.bondedTo
-						.filter( bond => bond.el.index !== rootIndex && !domain.map( dom => dom.index ).includes( bond.el.index ) && bond.bond.claimed === false )
-						.forEach( function( bond ){
-
-							if( !ss.found && bond.bond.type === ss.btype ){
-								if( ( ss.el === "R" ? true : ( ss.el === "X" ? ["Cl", "Br", "I", "F"].includes( bond.el.element ) : bond.el.element === ss.el ) ) ){
-
-									domain.push( bond.el );
-									claimed.push( bond.bond );
-
-									if( ss.hasOwnProperty( "bondedTo" ) ){
-
-										//////Recursive search//////
-										const deepSearch = inBonds( bond.el , ss.bondedTo, rootIndex, domain );
-
-										if( deepSearch ){
-											claimed = claimed.concat( deepSearch.claimed );
-											ss.found = true;
-										}
-
-									} else{
-										ss.found = true;
-									}
-
-								}
+							if( foundStructures ){
+								foundStructures.type = ss.type;
+								fGroups = fGroups.concat( foundStructures );
+								foundStructures.claimed.map( el => {mol.bonds[el.index].claimed = true} )
+								scanning = true;
+								break;
 							}
 
-						})
+						}
+					}
 
 				})
 
-				if( subStruct.filter( el => !el.found ).length < 1 ){
-					results = new MolViewer.fGroup( [source].concat( domain ), claimed );
-				} else{
-					results = null;
+				//////SEARCH BONDS OF ATOM//////
+				function inBonds( source, subStruct, rootIndex, domain ){
+
+					let claimed = [];
+					let results;
+
+					subStruct.forEach( function( ss ){
+
+						ss.found = false;
+						source.bondedTo
+							.filter( bond => bond.el.index !== rootIndex && !domain.map( dom => dom.index ).includes( bond.el.index ) && bond.bond.claimed === false )
+							.forEach( function( bond ){
+
+								if( !ss.found && bond.bond.type === ss.btype ){
+									if( ( ss.el === "R" ? true : ( ss.el === "X" ? ["Cl", "Br", "I", "F"].includes( bond.el.element ) : bond.el.element === ss.el ) ) ){
+
+										domain.push( bond.el );
+										claimed.push( bond.bond );
+
+										if( ss.hasOwnProperty( "bondedTo" ) ){
+
+											//////Recursive search//////
+											const deepSearch = inBonds( bond.el , ss.bondedTo, rootIndex, domain );
+
+											if( deepSearch ){
+												claimed = claimed.concat( deepSearch.claimed );
+												ss.found = true;
+											}
+
+										} else{
+											ss.found = true;
+										}
+
+									}
+								}
+
+							})
+
+					})
+
+					if( subStruct.filter( el => !el.found ).length < 1 ){
+						results = new MolViewer.fGroup( [source].concat( domain ), claimed );
+					} else{
+						results = null;
+					}
+
+					return results
+
 				}
 
-				return results
+				return fGroups
 
 			}
 
-			return fGroups
+			this.atoms = mol.atoms;
+			this.bonds = mol.bonds;
+			this.fGroups = fGroupSearcher();
+			this._molFile = molFile;
 
+			return this;
 		},
 
 		get2DFromSMILE: function( smile, addHydrogens ){
 
 			let molecule = OCL.Molecule.fromSmiles( smile );
 			addHydrogens && molecule.addImplicitHydrogens();
-			console.log( molecule.toMolfile() );
 			this.molFile = molecule.toMolfile();
 
 			return this
@@ -275,24 +257,6 @@
 
 	/////Molecule properties/////
 	Object.defineProperties( Molecule.prototype , {
-
-		"molFile": {
-
-			get: function () {
-
-				return this._molFile;
-
-			},
-
-			set: function ( value ) {
-
-				[this.atoms, this.bonds] = this.parseMol( value );
-				this.fGroups = this.fGroupSearcher( this );
-				this._molFile = value;
-
-			}
-
-		},
 
 		"bondLength": {
 
@@ -1825,6 +1789,28 @@
 	exports.Mol2D = Mol2D;
 	exports.Mol3D = Mol3D;
 	exports.Molecule = Molecule;
+	exports.subStructure_Lib = this.subStructures = [
+						  {type: "Carboxylic Acid", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "H",  btype: 1}]}]},
+						  {type: "Ester", root: "C", bonds:[{el: "O", btype: 2}, {el: "O", btype: 1, bondedTo:[{el: "R", btype:  1}]}]},
+						  {type: "Amide", root: "C", bonds:[{el: "O", btype: 2}, {el: "N", btype: 1, bondedTo:[{el: "R", btype: 1},  {el: "R", btype: 1}]}]},
+
+						  {type: "Acyl Halide", root: "C", bonds:[{el: "O", btype: 2}, {el: "X", btype: 1}]},
+
+						  {type: "Aldehyde", root: "C", bonds:[{el: "O", btype: 2}, {el: "H", btype: 1}]},
+						  {type: "Ketone", root: "C", bonds:[{el: "O", btype: 2}]},
+
+						  {type: "Primary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "H", btype: 1},{el: "R", btype: 1}]},
+						  {type: "Secondary Amine", root: "N", bonds:[{el: "H", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
+						  {type: "Tertiary Amine", root: "N", bonds:[{el: "R", btype: 1},{el: "R", btype: 1},{el: "R", btype: 1}]},
+
+						  {type: "Nitro", root: "N", bonds:[{el: "O", btype: 2},{el: "O", btype: 1}]},
+						  {type: "Alcohol", root: "O", bonds:[{el: "H", btype: 1}]},
+						  {type: "Halo", root: "R", bonds:[{el: "X", btype: 1}]},
+						  {type: "Nitrile", root: "C", bonds:[{el: "N", btype: 3}]},
+
+						  {type: "Acetal", root: "C", bonds:[{el: "O", btype: 1}, {el: "O", btype: 1}]},
+						  {type: "Ether", root: "O", bonds:[{el: "R", btype: 1},{el: "R", btype: 1}]},
+						 ];
 	exports.Atom = Atom;
 	exports.Bond = Bond;
 	exports.fGroup = fGroup;

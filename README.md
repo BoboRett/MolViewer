@@ -118,7 +118,7 @@ Container class for Atoms.
 | pos | *obj* | Atom position, in form of { x, y, z } |
 | element | *string* | Atom element, i.e. C, N, Cl |
 | charge | *int* | Atom parity |
-| bondedTo | *array* | Gives an array of connections with Atom, in form of { bond, pairedAtom } |
+| bondedTo | *array* | Gives an array of connections with Atom, in form of { bond: Connecting bond, atom: Paired atom } |
 | object2D | *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* | SVG element that corresponds to Atom |
 | object3D | *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* | Object that corresponds to Atom |
 ---
@@ -134,38 +134,16 @@ Container class for Bonds.
 
 ---
 
-### *int* *Bond*.index
-
-### *[Atom]* *Bond*.start
-
-### *[Atom]* *Bond*.end
-
-### *int* *Bond*.type
-
-   * 1: Single
-   * 2: Double
-   * 3: Triple
-   * 4: Aromatic
-   * 9: Transition
-
-### *int* *Bond*.direction
-
-   Bond stereochemistry
-
-   * 1: Wedged
-   * 6: Hashed
-
-### *bool* *Bond*.claimed
-
-Used internally during molecular searches, see [Molecule.fGroupSearcher()][Molecule]
-
-### *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* *Bond*.object2D
-
-SVG element that corresponds to Bond
-
-### *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* *Bond*.object3D
-
-Object that corresponds to Bond
+| Property | Type | Description |
+| --- | --- | --- |
+| index | *int* | Bond index, starts at 0 |
+| start | *[Atom]* | Starting Atom |
+| end | *[Atom]* | Ending Atom |
+| type | *int* | Bond type; *1: Single, 2: Double, 3: Triple, 4: Aromatic, 9: Transition* |
+| direction | *int* | Bond Stereochemistry; *1: Wedged, 6: Hashed* |
+| claimed | *bool* | Used internally during molecular searches, see [Molecule.fGroupSearcher()][Molecule] |
+| object2D | *[SVGSVGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGSVGElement)* | SVG element that corresponds to Bond |
+| object3D | *[three.js Object](https://threejs.org/docs/#api/en/core/Object3D)* | Object that corresponds to Bond |
 
 ---
 ---
@@ -177,19 +155,14 @@ Object that corresponds to Bond
 Container class for functional groups.
 
 ### Properties
+
 ---
 
-### *string* *fGroup*.type
-
-   Name of functional group, i.e. Primary Amine, Hydroxyl, etc.
-
-### *array[[Atom]]* *fGroup*.domain
-
-   List of atoms contained within group
-
-### *array[[Bond]]* *fGroup*.claimed
-
-   List of bonds owned by group
+| Property | Type | Description |
+| --- | --- | --- |
+| type | *string* | Name of functional group, i.e. Primary Amine, Hydroxyl, etc. |
+| domain |  *array[[Atom]]* | List of atoms contained within group |
+| claimed | *array[[Bond]]* | List of bonds owned by group |
 
 ---
 ---
@@ -199,53 +172,27 @@ Container class for functional groups.
 ### MolViewer.Molecule( [*string* molFile] )
 
 ### Properties
+
 ---
 
-### *string* *Molecule*.molFile
-
-Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups.
-
-### *array[[Atom]]* *Molecule*.atoms
-
-### *array[[Bond]]* *Molecule*.bonds
-
-### *array[[fGroup]]* *Molecule*.fGroups
-
-Array of molecule's functional groups, in form of {}
-
-### *int* *Molecule*.bondLength
-
-Average length of bonds in molecule. Can change this to 'scale' molecule.
-
+| Property | Type | Description |
+| --- | --- | --- |
+| molFile | *string* | Contains the Molecule's mol file. When setting, the molecule will automatically parse the file and populate itself with atoms, bonds, and functional groups
+| atoms | *array[[Atom]]* | List of molecule's atoms
+| bonds | *array[[Bond]]* | List of molecule's bonds
+| fGroups | *array[[fGroup]]* | List of molecule's functional groups
+| bondLength | *int* | Average length of bonds in molecule. Can set this to 'scale' molecule
 
 ### Methods
 
 ---
 
-### *Molecule*.parseMol( *string* molFile )
-
-Parses provided MOL file, extracting molecule information and populating self.  
-Returns array of found [[Atom]s, [Bond]s]
-
-### *Molecule*.fGroupSearcher()
-
-Scans molecule for functional groups.  
-Returns array of found [fGroup]s
-
-### *Molecule*.get2DFromSMILE( *string* smile[, *bool* addHydrogens ] )
-
-Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 2D coordinates.
-Use **addHydrogens** to generate implicit hydrogens with molecule.  
-***Requires OpenChemLib, see [Prerequisites](#prerequisites)***  
-
-### *Molecule*.get3DFromSMILE( *string* smile )
-
-Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 3D coordinates  
-    ***Gets conversion via [NIH - National Cancer Institute](https://cactus.nci.nih.gov/translate/)***  
-
-### *Molecule*.centre()
-
-  Centres molecule around 0,0,0 if molfile coordinates are iffy
+| Method | Arguments | Returns | Description |
+| --- | --- | --- | --- |
+| parseMol | *string* molFile | self | Parses provided MOL file, extracting molecule information and populating self. |
+| get2DFromSMILE | *string* smile <br> [*bool* addHydrogrens] | self | Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 2D coordinates.<br>Use **addHydrogens** to generate implicit hydrogens with molecule.<br>***Requires OpenChemLib, see [Prerequisites](#prerequisites)*** |
+| get3DFromSMILE | *string* smile | void | Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 3D coordinates<br>***Gets conversion via [NIH - National Cancer Institute](https://cactus.nci.nih.gov/translate/)*** |
+| centre | *none* | void | Centres molecule around 0,0,0 if molfile coordinates are iffy |
 
 ---
 ---
