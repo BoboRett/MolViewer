@@ -208,7 +208,7 @@ Container class for functional groups.
 ### Optional Parameters
 
 | Parameter | Default | Description |
-| --- | --- |
+| --- | --- | --- |
 | zoomable | true | Enables manipulation of SVG by mouse/touch |
 | zoomSmooth | 300 | Duration of zoom transition |
 | zoomEase | d3.easeCircleOut | D3 easing function for zoom transition |
@@ -221,7 +221,7 @@ Container class for functional groups.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| Molecule | [Molecule] |  |
+| Molecule | *[Molecule]* |  |
 | Container | *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* |  |
 | dims | *obj* | Dimensions of SVG ViewBox, in form of { x, y, width, height } |
 | bondScale | *int* | Another layer of scaling the molecule. See [Molecule] => bondLength |
@@ -254,7 +254,7 @@ Container class for functional groups.
 ### Optional Parameters
 
 | Parameter | Default | Description |
-| --- | --- |
+| --- | --- | --- |
 | disableInteractions | false | Disable interactions with 3D canvas |
 | showfGroups | true | Show functional groups on molecule |
 | showHs | true | Show hydrogens on molecule |
@@ -271,11 +271,11 @@ Container class for functional groups.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| Molecule | [Molecule] |  |
+| Molecule | *[Molecule]* |  |
 | Container | *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* |  |
 | Scene | *three.js Scene* | Dimensions of SVG ViewBox, in form of { x, y, width, height } |
 | molGroup | *three.js Group* | Group of all molecule objects in Scene |
-| [atomCols] | Proxy | List default colours for atoms. See further info |
+| [atomCols] | *Proxy* | List default colours for atoms. See further info |
 
 
 ### Methods
