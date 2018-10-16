@@ -38,6 +38,7 @@
 		this.type = type;
 		this.domain = domain;
 		this.claimed = claimed;
+		this.material = null;
 
 	}
 
@@ -222,6 +223,7 @@
 			let molecule = OCL.Molecule.fromSmiles( smile );
 			addHydrogens && molecule.addImplicitHydrogens();
 			this.molFile = molecule.toMolfile();
+			this.parseMol();
 
 			return this
 
@@ -235,7 +237,10 @@
 			d3.xml( "https://cactus.nci.nih.gov/chemical/structure/" + smile.replace( /\#/g, "%23" ).replace( /\[/g, "%5B" ).replace( /\]/g, "%5D" ) + "/file/xml?format=sdf&get3d=true")
 				.then( ( d, err ) => {
 
+					if( d.children[0].children.length === 0 ){ console.error( "MolViewer: Invalid SMILE string!"); return };
+
 					this.molFile = d.children[0].children[0].children[0].innerHTML;
+					this.parseMol();
 					this.ajaxRunning = false
 					document.dispatchEvent( event )
 
@@ -395,7 +400,7 @@
 
 		init: function(){
 
-			if( this._initialised ) console.warn( "Molecule already initialised!" );
+			if( this._initialised ) console.warn( "MolViewer: Molecule already initialised!" );
 
 			d3.select( "#molViewer2DCSS" ).remove();
 			d3.select( "html" ).append( "style" ).attr( "id", "molViewer2DCSS" ).html( this.stylesheet );
@@ -688,7 +693,7 @@
 
 				} else{
 
-						console.warn( "Container is not of type Element!" );
+						console.warn( "MolViewer: Container is not of type Element!" );
 
 				}
 
@@ -724,7 +729,7 @@
 
 				} else{
 
-					console.warn( "zoomSmooth must be an integer!" );
+					console.warn( "MolViewer: zoomSmooth must be an integer!" );
 
 				}
 
@@ -796,15 +801,14 @@
 
 		const self = this;
 
-		this._initialised = false;
-		this._FOV = 70;
-
 		this.Container    = container || null;
 		this.Molecule     = molecule;
 		this.Scene        = new THREE.Scene();
 		this.mouse        = new THREE.Vector2();
 		this.molGroup     = new THREE.Group();
-		this.animID;
+		this._animID;
+		this._initialised = false;
+		this._FOV = 70;
 
 		this.stylesheet = `
 			.view3D {
@@ -818,7 +822,10 @@
 			//////Scene controller (ONLY TOUCH IF YOU KNOW WHAT YOU'RE DOING)//////
 			sceneController: {enabled: true, props: {}, fn: function( self ){
 
-					self.animID = requestAnimationFrame( self._animate );
+					self._animID = requestAnimationFrame( self._animate );
+
+					self.effect.render( self.Scene, self.camActive );
+
 					self.controls.update();
 
 					self._camOrtho.position.copy( new THREE.Vector3().copy( self._camPersp.position ) );
@@ -941,13 +948,7 @@
 				}
 			},
 			//////Dispatch object mouseover events to "3DMouseover"//////
-			mouseoverDispatch: {enabled: false, props: { XRay: false, _hovered: null }, fn: function( self ){
-
-					if( !this.props.XRay ){
-
-						if( !self._DOM.matches( ":hover" ) ){ return }
-
-					}
+			mouseoverDispatch: {enabled: false, props: { _hovered: null }, fn: function( self ){
 
 					var raycaster = new THREE.Raycaster();
 					raycaster.setFromCamera( self.mouse, self.camActive );
@@ -1136,21 +1137,21 @@
 			});
 
 			this.groupCols = new Proxy( {
-				Carboxyl : [0.3, 0.3, 0.3],
-				"Carboxyl + Alkyl (Ester)" : [0.3, 0.3, 0.3],
+				"Carboxylic Acid" : [0.3, 0.3, 0.3],
+				Ester : [0.3, 0.3, 0.3],
 				Amide : [0.56, 0.56, 1.0],
-				"Acyl Chloride" : [1.0, 1.0, 0.0],
-				Acetal : [1.0, 0.0, 0.0],
-				Carbonyl : [1.0, 0.5, 0.5],
-				Alkoxy : [1.0, 0.0, 0.0],
-				Amino : [0.56, 0.56, 1.0],
+				"Acyl Halide" : [1.0, 1.0, 0.0],
+				Aldehyde : [1.0, 0.0, 0.0],
+				Ketone : [1.0, 0.5, 0.5],
+				"Primary Amine" : [0.56, 0.56, 1.0],
+				"Secondary Amine" : [0.36, 0.36, 0.8],
+				"Tertiary Amine" : [0.16, 0.16, 0.6],
 				Nitro : [0.56, 0.56, 1.0],
-				Hydroxyl : [1.0, 0.0, 0.0],
-				Fluoro : [0.0, 1.0, 0.0],
-				Chloro : [0.0, 1.0, 0.0],
-				Bromo : [0.64, 0.18, 0.18],
-				Iodo : [0.0, 1.0, 0.0],
+				Alcohol : [1.0, 0.0, 0.0],
+				Halo : [0.0, 1.0, 0.0],
 				Nitrile : [0.56, 0.56, 1.0],
+				Acetal : [0.56, 0.56, 1.0],
+				Ether : [0.56, 0.56, 1.0],
 			}, {
 				get: function( target, name ){
 					if( !target.hasOwnProperty( name ) ){ target[name] = [1, 0.1, 0.55] };
@@ -1176,8 +1177,6 @@
 
 			Object.values( self.frameFunctions ).forEach( el => el.enabled && el.fn( self ) )
 
-			self.effect.render( self.Scene, self.camActive );
-
 		}
 
 	}
@@ -1187,7 +1186,7 @@
 
 		init: function(){
 
-			if( this._initialised ){ console.warn( "Molecule already initialised!" ); return }
+			if( this._initialised ){ console.warn( "MolViewer: Molecule already initialised!" ); return }
 
 			d3.select( "#molViewer3DCSS" ).empty();
 			d3.select( "html" ).append( "style" ).attr( "id", "molViewer3DCSS" ).html( this.stylesheet );
@@ -1224,7 +1223,7 @@
 
 			}else{
 
-				console.warn( "No container element specified! Set property '.Container = element'")
+				console.warn( "MolViewer: No container element specified! Set property '.Container = element'")
 
 			}
 
@@ -1246,9 +1245,9 @@
 
 			}
 
-			if( !this._molecule ){ console.warn( "No molecule to draw! Set .Molecule = Molecule" ) }
-			else if( this._molecule.ajaxRunning ){ console.warn( "AJAX Request currently in progress: no data to draw. Listen for event 'ajaxComplete' after calling getFromSMILE() to call draw()." ) }
-			else if( !this._initialised ){ console.warn( "3D Container needs initialising. Call .init() before attempting to draw." ) }
+			if( !this._molecule ){ console.warn( "MolViewer: No molecule to draw! Set .Molecule = Molecule" ) }
+			else if( this._molecule.ajaxRunning ){ console.warn( "MolViewer: AJAX Request currently in progress: no data to draw. Listen for event 'ajaxComplete' after calling getFromSMILE() to call draw()." ) }
+			else if( !this._initialised ){ console.warn( "MolViewer: 3D Container needs initialising. Call .init() before attempting to draw." ) }
 			else{
 
 				this.Scene.remove( this.molGroup );
@@ -1257,7 +1256,7 @@
 				this.showHs = this.showHs;
 				this.resetView();
 
-				if( this.animID ){ window.cancelAnimationFrame( this.animID ); this.animID = null; };
+				if( this._animID ){ window.cancelAnimationFrame( this._animID ); this._animID = null; };
 				this.play();
 				this._onWindowResize();
 				window.removeEventListener( "resize", this._onWindowResize );
@@ -1273,7 +1272,7 @@
 
 		dispose: function() {
 
-			if( this.animID ){ this.pause() };
+			if( this._animID ){ this.pause() };
 
 			this.Scene.children.forEach( obj => this.Scene.remove( obj ) );
 			this.Scene = null;
@@ -1284,30 +1283,16 @@
 
 		},
 
-		genGroup: function( molecule ){
+		genGroup: function(){
 
-			const group = new THREE.Group();
+			const drawAtom = ( parentGroup, atom, i ) => {
 
-			group.add( ...this.drawAtoms( molecule.atoms ) );
-			group.add( ...this.drawBonds( molecule.bonds ) );
-			this.drawFunctionalGroups( molecule.fGroups, group ); //Gets added directly to atoms, doesn't need adding to entire group
+				if( !this.atomCols[atom.element]["material"] ){
 
-			return group
+					if( !this.atomCols[atom.element] ) this.atomCols[atom.element] = this.atomCols.xx; //Set it as default colour
 
-		},
-
-		drawAtoms: function( atoms ){
-
-			var group = [];
-
-			atoms.forEach( ( el, i ) => {
-
-				if( !this.atomCols[el.element]["material"] ){
-
-					if( !this.atomCols[el.element] ) this.atomCols[el.element] = this.atomCols.xx;
-
-					this.atomCols[el.element]["material"] = new THREE.MeshToonMaterial({
-							color: new THREE.Color().setRGB( ...this.atomCols[el.element] ),
+					this.atomCols[atom.element]["material"] = new THREE.MeshToonMaterial({
+							color: new THREE.Color().setRGB( ...this.atomCols[atom.element] ),
 							reflectivity: 0.8,
 							shininess: 0.8,
 							specular: 0.8,
@@ -1315,37 +1300,30 @@
 
 				}
 
-				const sphere = new THREE.SphereGeometry( ( el.element === "H" ? 0.2 : 0.25 ) , 16, 16 )
-				const mesh = new THREE.Mesh( sphere, this.atomCols[el.element]["material"] );
-				mesh.position.copy( el.pos );
+				const sphere = new THREE.SphereGeometry( ( atom.element === "H" ? 0.2 : 0.25 ) , 16, 16 )
+				const mesh = new THREE.Mesh( sphere, this.atomCols[atom.element]["material"] );
+				mesh.position.copy( atom.pos );
 
-				mesh.name = el.index;
-				mesh.userData.tooltip = el.element;
+				mesh.name = atom.index;
+				mesh.userData.tooltip = atom.element;
 				mesh.userData.type = "atom";
-				mesh.userData.source = el;
+				mesh.userData.source = atom;
 
-				el.object3D = mesh;
+				atom.object3D = mesh;
 
-				group.push( mesh );
+				parentGroup.add( mesh );
 
-			})
+			}
 
-			return group
-		},
+			const drawBond = ( parentGroup, bond, i ) => {
 
-		drawBonds: function( bonds ){
+				const vec = new THREE.Vector3().copy( bond.end.pos ).sub( new THREE.Vector3().copy( bond.start.pos ) );
 
-			var group = [];
-
-			bonds.forEach( ( el, i ) => {
-
-				var vec = new THREE.Vector3().copy( el.end.pos ).sub( new THREE.Vector3().copy( el.start.pos ) );
-
-				switch ( el.type ){
+				switch ( bond.type ){
 
 					case 1:
 
-						var bond = new THREE.TubeGeometry(
+						var bondGeo = new THREE.TubeGeometry(
 							new THREE.LineCurve3(
 								new THREE.Vector3( 0, 0, 0 ),
 								vec,
@@ -1356,17 +1334,17 @@
 					case 3:
 
 						var polar_sphere = [vec.length(), Math.acos(vec.z/vec.length()), Math.atan2(vec.y,vec.x)]; //[r,theta,phi]
-						var bond = new THREE.Geometry();
+						var bondGeo = new THREE.Geometry();
 
-						[0.5,-0.5].forEach( el => { //[Bend factor+, Bend factor-]
+						[0.5,-0.5].forEach( bend => { //[Bend factor+, Bend factor-]
 
-							bond.merge( new THREE.TubeGeometry(
+							bondGeo.merge( new THREE.TubeGeometry(
 								new THREE.QuadraticBezierCurve3(
 									new THREE.Vector3( 0, 0, 0 ),
 									new THREE.Vector3(
-										vec.x/2 + el * Math.sin( polar_sphere[1] ) * Math.cos( polar_sphere[2] + Math.PI/2 ),
-										vec.y/2 + el * Math.sin( polar_sphere[1] ) * Math.sin( polar_sphere[2] + Math.PI/2 ),
-										vec.z/2 + el * Math.cos( polar_sphere[1] )
+										vec.x/2 + bend * Math.sin( polar_sphere[1] ) * Math.cos( polar_sphere[2] + Math.PI/2 ),
+										vec.y/2 + bend * Math.sin( polar_sphere[1] ) * Math.sin( polar_sphere[2] + Math.PI/2 ),
+										vec.z/2 + bend * Math.cos( polar_sphere[1] )
  									),
 									vec
 								), 10, .05, 8, false )
@@ -1374,9 +1352,9 @@
 
 						})
 
-						if ( el.type === 3 ) {
+						if ( bond.type === 3 ) {
 
-							bond.merge(
+							bondGeo.merge(
 								new THREE.TubeGeometry(
 									new THREE.LineCurve3(
 										new THREE.Vector3( 0, 0, 0 ),
@@ -1390,7 +1368,7 @@
 					case 4:
 
 						var polar_sphere = [vec.length(), Math.acos(vec.z/vec.length()), Math.atan2(vec.y,vec.x)]; //[r,theta,phi]
-						var bond = new THREE.Geometry();
+						var bondGeo = new THREE.Geometry();
 
 						const offset = new THREE.Vector3(
 							Math.sin( polar_sphere[1] )*Math.cos( polar_sphere[2] + Math.PI/2 ),
@@ -1398,7 +1376,7 @@
 							Math.cos( polar_sphere[1] )
 						).multiplyScalar( 0.1 );
 
-						bond.merge( new THREE.TubeGeometry(
+						bondGeo.merge( new THREE.TubeGeometry(
 							new THREE.LineCurve3(
 								offset,
 								new THREE.Vector3().copy( offset ).add( vec )
@@ -1407,11 +1385,11 @@
 
 						offset.negate();
 
-						[[0.0, 0.15],[0.25, 0.45],[0.55, 0.75],[0.85, 1.0]].forEach( el => {
-							bond.merge( new THREE.TubeGeometry(
+						[[0.0, 0.15],[0.25, 0.45],[0.55, 0.75],[0.85, 1.0]].forEach( tubeFragment => {
+							bondGeo.merge( new THREE.TubeGeometry(
 								new THREE.LineCurve3(
-									new THREE.Vector3().copy( offset ).addScaledVector( vec, el[0] ),
-									new THREE.Vector3().copy( offset ).addScaledVector( vec, el[1] ),
+									new THREE.Vector3().copy( offset ).addScaledVector( vec, tubeFragment[0] ),
+									new THREE.Vector3().copy( offset ).addScaledVector( vec, tubeFragment[1] ),
 									), 0, .05, 14, false )
 							);
 						});
@@ -1419,13 +1397,13 @@
 
 					case 9:
 
-						var bond = new THREE.Geometry();
+						var bondGeo = new THREE.Geometry();
 
-						[[0.0, 0.15],[0.25, 0.45],[0.55, 0.75],[0.85, 1.0]].forEach( el => {
-							bond.merge( new THREE.TubeGeometry(
+						[[0.0, 0.15],[0.25, 0.45],[0.55, 0.75],[0.85, 1.0]].forEach( tubeFragment => {
+							bondGeo.merge( new THREE.TubeGeometry(
 								new THREE.LineCurve3(
-									new THREE.Vector3().copy( vec ).multiplyScalar( el[0] ),
-									new THREE.Vector3().copy( vec ).multiplyScalar( el[1] ),
+									new THREE.Vector3().copy( vec ).multiplyScalar( tubeFragment[0] ),
+									new THREE.Vector3().copy( vec ).multiplyScalar( tubeFragment[1] ),
 									), 0, .05, 14, false )
 							);
 						})
@@ -1433,10 +1411,12 @@
 
 				};
 
-				if( !this.bondCols[el.type]["material"] ){
+				if( !this.bondCols[bond.type]["material"] ){
 
-					this.bondCols[el.type]["material"] = new THREE.MeshToonMaterial({
-							color: new THREE.Color().setRGB( ...this.bondCols[el.type] ),
+					if( !this.bondCols[bond.type] ) this.bondCols[bond.type] = this.bondCols.xx; //Set it as default colour
+
+					this.bondCols[bond.type]["material"] = new THREE.MeshToonMaterial({
+							color: new THREE.Color().setRGB( ...this.bondCols[bond.type] ),
 							reflectivity: 0.8,
 							shininess: 0.8,
 							specular: 0.8,
@@ -1444,45 +1424,50 @@
 
 				}
 
+				const mesh = new THREE.Mesh( bondGeo, this.bondCols[bond.type]["material"] );
 
-				const mesh = new THREE.Mesh( bond, this.bondCols[el.type]["material"] );
-
-				mesh.name = el.start.index + "_" + el.end.index;
-				mesh.userData.source = el;
-				mesh.userData.tooltip = el;
+				mesh.name = bond.start.index + "_" + bond.end.index;
+				mesh.userData.source = bond;
+				mesh.userData.tooltip = bond;
 				mesh.userData.type = "bond";
 
-				mesh.position.copy( el.start.pos );
+				mesh.position.copy( bond.start.pos );
 
-				el.object3D = mesh;
+				bond.object3D = mesh;
 
-				group.push( mesh );
+				parentGroup.add( mesh );
 
-			})
+			}
 
-			return group
+			const drawFunctionalGroup = ( parentGroup, fGroup, i ) => {
 
-		},
+				if( !fGroup.material ){
 
-		drawFunctionalGroups: function( fGroups, parentGroup ){
+					if( !this.groupCols[fGroup.type]["material"] ){
 
-			fGroups.forEach( ( el, i ) => {
+						if( !this.groupCols[fGroup.type] ) this.groupCols[fGroup.type] = this.groupCols.xx; //Set as default colour
 
-				const hlmat = new THREE.MeshToonMaterial( {
-							color: new THREE.Color().setHex( Math.random() * 0xffffff ),
-							transparent: true,
-							visible: true,
-							opacity: 0.7,
-							flatShading: true,
-						});
+							this.groupCols[fGroup.type]["material"] = new THREE.MeshToonMaterial({
+									color: new THREE.Color().setRGB( ...this.groupCols[fGroup.type] ),
+									transparent: true,
+									visible: true,
+									opacity: 0.7,
+									flatShading: true,
+								})
+
+					}
+
+				}
+
+				fGroup.material = this.groupCols[fGroup.type]["material"];
 
 				const hlgeo = new THREE.IcosahedronBufferGeometry( 0.5, 1 );
 
-				el.domain.forEach( atom => {
+				fGroup.domain.forEach( atom => {
 
-					const hlmesh = new THREE.Mesh( hlgeo.clone(), hlmat );
-					hlmesh.userData.source = el;
-					hlmesh.userData.tooltip = el.type;
+					const hlmesh = new THREE.Mesh( hlgeo.clone(), fGroup.material );
+					hlmesh.userData.source = fGroup;
+					hlmesh.userData.tooltip = fGroup.type;
 					hlmesh.userData.type = "fGroup";
 					parentGroup.getObjectByName( atom.index ).add( hlmesh );
 
@@ -1490,7 +1475,15 @@
 
 				});
 
-			})
+			};
+
+			const group = new THREE.Group();
+
+			this.Molecule.atoms.forEach( ( atom, i ) => drawAtom( group, atom, i ) );
+			this.Molecule.bonds.forEach( ( bond, i ) => drawBond( group, bond, i ) );
+			this.Molecule.fGroups.forEach( ( fGroup, i ) => drawFunctionalGroup( group, fGroup, i ) ); //Gets added directly to atoms, doesn't need adding to entire group
+
+			return group
 
 		},
 
@@ -1506,17 +1499,17 @@
 
 		},
 
-		printHierarchy: function( obj ) {
+		printHierarchy: function( object ) {
 
-			if( !obj ){ obj = this.molGroup }
+			if( !object ){ object = this.molGroup }
 
-			function print( obj ){
+			(function print( object ){
 
-				console.group( ' <' + obj.type + '> ' + obj.name );
-				obj.children.forEach( self.printHierarchy );
+				console.group( ' <' + object.type + '> ' + object.name );
+				object.children.forEach( print );
 				console.groupEnd();
 
-			}
+			})( object )
 
 		},
 
@@ -1541,14 +1534,14 @@
 
 		pause: function(){
 
-			cancelAnimationFrame( this.animID );
-			this.animID = null;
+			cancelAnimationFrame( this._animID );
+			this._animID = null;
 
 		},
 
 		play: function(){
 
-			if( !this.animID ) this.animID = requestAnimationFrame( this._animate );
+			if( !this._animID ) this._animID = requestAnimationFrame( this._animate );
 
 		},
 
@@ -1632,7 +1625,7 @@
 
 				} else{
 
-						console.warn( "Container is not of type Element!" );
+						console.warn( "MolViewer: Container is not of type Element!" );
 
 				}
 
@@ -1702,40 +1695,6 @@
 				})
 
 				this._showfGroups = value;
-
-			}
-
-		},
-
-		"onMouseDown": {
-
-			get: function(){
-
-				return this._onMouseDown
-
-			},
-
-			set: function( value ) {
-
-				d3.select( this._DOM ).on( "mousedown", value, true );
-				this._onMouseDown = value;
-
-			}
-
-		},
-
-		"onWindowResize": {
-
-			get: function(){
-
-				return this._onWindowResize
-
-			},
-
-			set: function( value ){
-
-					if( this._initialised ){ window.addEventListener( "resize", this._onWindowResize ) };
-					this._onWindowResize = value;
 
 			}
 
