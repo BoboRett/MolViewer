@@ -39,6 +39,7 @@
 		this.domain = domain;
 		this.claimed = claimed;
 		this.material = null;
+		this.object3D = null;
 
 	}
 
@@ -288,7 +289,9 @@
 	})
 
 	/////2D canvas objects/////
-	function Mol2D( molecule, Container, dims, params ){
+	function Mol2D( Molecule, Container, dims, params ){
+
+		if( Container === undefined ){ console.error( "No container element specified!" ); return };
 
 		params = params || {};
 
@@ -297,10 +300,9 @@
 		this._initialised = false;
 		this._bondScale = 50;
 		this._scaleBox = { width : 0, height: 0 };
-		dims = dims !== undefined ? dims : [ 0, 0, Container.getBoundingClientRect().width, Container.getBoundingClientRect().height ];
-		this.dims = { x: dims[0], y: dims[1], width: dims[2], height: dims[3] };
+		this.dims = dims !== undefined ? dims : { x: 0, y: 0, width: Container.getBoundingClientRect().width, height: Container.getBoundingClientRect().height };
 		this.Container = Container;
-		this.Molecule = molecule;
+		this.Molecule = Molecule;
 
 		this.zoomable = params.zoomable !== undefined ? params.zoomable : true;
 		this.showIndices = params.showIndices !== undefined ? params.showIndices : false;
@@ -857,7 +859,7 @@
 
 							if( intersects[0].object instanceof THREE.Mesh ){
 
-								if( this.props._intersected !== intersects[0] ){
+								if( this.props._intersected !== intersects[0].object ){
 
 									setMaterial( this.props._intersected, this.props._storedMat );
 
@@ -893,7 +895,7 @@
 
 						if( obj.userData.source instanceof MolViewer.fGroup ){
 
-							obj.userData.source.domain.forEach( atom => atom.object3D.children[0].material = mat );
+							obj.userData.source.object3D.forEach( atom => atom.material = mat );
 
 						}
 
@@ -1188,7 +1190,7 @@
 
 			if( this._initialised ){ console.warn( "MolViewer: Molecule already initialised!" ); return }
 
-			d3.select( "#molViewer3DCSS" ).empty();
+			d3.select( "#molViewer3DCSS" ).remove();
 			d3.select( "html" ).append( "style" ).attr( "id", "molViewer3DCSS" ).html( this.stylesheet );
 
 			if( this._DOM ){
@@ -1441,6 +1443,8 @@
 
 			const drawFunctionalGroup = ( parentGroup, fGroup, i ) => {
 
+				const fGroups = [];
+
 				if( !fGroup.material ){
 
 					if( !this.groupCols[fGroup.type]["material"] ){
@@ -1470,10 +1474,13 @@
 					hlmesh.userData.tooltip = fGroup.type;
 					hlmesh.userData.type = "fGroup";
 					parentGroup.getObjectByName( atom.index ).add( hlmesh );
+					fGroups.push( hlmesh );
 
 					hlmesh.visible = this.showfGroups
 
 				});
+
+				fGroup.object3D = fGroups;
 
 			};
 

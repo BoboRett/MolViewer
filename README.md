@@ -178,6 +178,7 @@ Container class for functional groups.
 | domain |  *array[[Atom]]* | List of atoms contained within group |
 | claimed | *array[[Bond]]* | List of bonds owned by group |
 | material | *[Material](https://threejs.org/docs/#api/en/materials/Material)* | Material for functional group encasing mesh. Can be set before drawing or modified afterwards. |
+| object3D | *array[*[Object3D](https://threejs.org/docs/#api/en/core/Object3D)*]* | List of objects maming up the functional group's overlay mesh
 
 ---
 ---
@@ -206,8 +207,8 @@ Container class for functional groups.
 | --- | --- | --- | --- |
 | parseMol | *string* molFile | self | Parses provided MOL file, extracting molecule information and populating self. |
 | get2DFromSMILE | *string* smile <br> [*bool* addHydrogrens] | self | Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 2D coordinates.<br>Use **addHydrogens** to generate implicit hydrogens with molecule.<br>***Requires OpenChemLib, see [Prerequisites](#prerequisites)*** |
-| get3DFromSMILE | *string* smile | void | Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 3D coordinates<br>***Synchronously gets conversion via [NIH - National Cancer Institute](https://cactus.nci.nih.gov/translate/). Immediately calling draw will not work, as the fetch will not have completed. You must listen for the "ajaxComplete" event on the document to draw the resulting fetch.*** |
-| centre | *none* | void | Centres molecule around 0,0,0 if molfile coordinates are iffy |
+| get3DFromSMILE | *string* smile | *void* | Takes **smile** (i.e. "C1CCCC(N)C1" ) and generates and parses its corresponding molfile. Gives only 3D coordinates<br>***Synchronously gets conversion via [NIH - National Cancer Institute](https://cactus.nci.nih.gov/translate/). Immediately calling draw will not work, as the fetch will not have completed. You must listen for the "ajaxComplete" event on the document to draw the resulting fetch.*** |
+| centre | *none* | *void* | Centres molecule around 0,0,0 if molfile coordinates are iffy |
 
 ---
 ---
@@ -244,17 +245,17 @@ Container class for functional groups.
 
 | Method | Arguments | Returns | Description |
 | --- | --- | --- | --- |
-| init | *none* | self | Initialises SVG, adding stylesheet to DOM |
-| draw | *none* | self | Renders SVG, adds to .Container |
-| genMolecule | *none* | [SVGGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGGElement) | Generates an SVG Group containing all molecule elements |
-| fitToScreen | *none* | void | Fits SVG to current container |
+| init | *none* | *self* | Initialises SVG, adding stylesheet to DOM |
+| draw | *none* | *self* | Renders SVG, adds to .Container |
+| genMolecule | *none* | *[SVGGElement](https://developer.mozilla.org/en-US/docs/Web/API/SVGGElement)* | Generates an SVG Group containing all molecule elements |
+| fitToScreen | *none* |* void* | Fits SVG to current container |
 
 ---
 ---
 
 ## Mol3D
 
-### ( *[Molecule]* Molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* Container[, *object* params ] )
+### ( [ *[Molecule]* Molecule, *[DOMElement](https://developer.mozilla.org/en-US/docs/Web/API/Element)* Container, *object* params ] )
 
 ### Optional Parameters
 
@@ -314,41 +315,41 @@ Container class for functional groups.
 </thead>
 <tbody>
 <tr>
-<td>sceneController</td><td>true</td><td>*none*</td><td></td><td>**Required for scene to 'run'. Handle with extreme care.**<br>Renders scene, updates controls and camera frustrums</td>
+<td>sceneController</td><td>true</td><td><em>none</em></td><td></td><td><strong>Required for scene to 'run'. Handle with extreme care.</strong><br>Renders scene, updates controls and camera frustrums</td>
 </tr>
 <tr>
-<td>highlight</td><td>true</td><td>*none*</td><td></td><td>Highlights atoms as they're hovered</td>
+<td>highlight</td><td>true</td><td><em>none</em></td><td></td><td>Highlights atoms as they're hovered</td>
 </tr>
 <tr>
-<td>autoRotate</td><td>false</td><td colspan=2></td><td>Automatically rotates the molecule</td>
+<td>autoRotate</td><td>false</td><td colspan="2"></td><td>Automatically rotates the molecule</td>
 </tr>
 <tr>
-<td rowspan=3 colspan=2></td><td>*string* axes</td><td>x</td><td>Axes upon which to rotate. i.e. "x", "xz", "xyz"</td>
+<td colspan="2" rowspan="3"></td><td><em>string</em> axes</td><td>x</td><td>Axes upon which to rotate. i.e. "x", "xz", "xyz"</td>
 </tr>
 <tr>
-<td>*<a href="https://threejs.org/docs/#api/en/core/Object3D">Object</a>* target</td><td>Mol3D.molGroup</td><td>Objects that will be rotated about world axis</td>
+<td><em><a href="https://threejs.org/docs/#api/en/core/Object3D">Object</a></em> target</td><td>Mol3D.molGroup</td><td>Objects that will be rotated about world axis</td>
 </tr>
 <tr>
-<td>*float* speed</td><td>0.01</td><td>Speed at which object rotates (rad/s)</td>
+<td><em>float</em> speed</td><td>0.01</td><td>Speed at which object rotates (rad/s)</td>
 </tr>
 <tr>
-<td>highlightSync</td><td>false</td><td>*none*</td><td></td><td>Highlights corresponding 2D element when hovering a 3D object.<br>**Requires identical atom maps.**<br>Generating a molecule from get2DFromSMILE and get3DFromSMILE does **not** guarantee identical atom indices, meaning it will highlight the wrong SVG elements. This is really only appropriate when you have imported your own molfiles and can ensure the atoms and bonds are ordered the same way.</td>
+<td>highlightSync</td><td>false</td><td><em>none</em></td><td></td><td>Highlights corresponding 2D element when hovering a 3D object.<br><strong>Requires identical atom maps.</strong><br>Generating a molecule from get2DFromSMILE and get3DFromSMILE does <strong>not</strong> guarantee identical atom indices, meaning it will highlight the wrong SVG elements. This is really only appropriate when you have imported your own molfiles and can ensure the atoms and bonds are ordered the same way.</td>
 </tr>
 <tr>
-<td>mouseoverDispatch</td><td>false</td><td>*none*</td><td></td><td>Dispatches events to *document* whenever an atom is hovered ("*3DMousein*") or left ("*3DMouseout*"). The event detail contains the **type** of event and an array of **objects** that are under the pointer.</td>
+<td>mouseoverDispatch</td><td>false</td><td><em>none</em></td><td></td><td>Dispatches events to <em>document</em> whenever an atom is hovered ("<em>3DMousein</em>") or left ("<em>3DMouseout</em>"). The event detail contains the <strong>type</strong> of event and an array of <strong>objects</strong> that are under the pointer.</td>
 </tr>
 <tr>
-<td>labelTrack</td><td>false</td><td colspan=2></td><td>Provides a framework for attaching divs to objects, snapping them during transformations to molecule</td>
+<td>labelTrack</td><td>false</td><td colspan="2"></td><td>Provides a framework for attaching divs to objects, snapping them during transformations to molecule</td>
 </tr>
 <tr>
-<td colspan=2></td><td>*array* labels</td><td>*empty*</td><td>List of label elements with owning 3D **object** attached as data. [~~See Example~~ (coming soon)]()</td>
+<td colspan="2"></td><td><em>array</em> labels</td><td><em>empty</em></td><td>List of label elements with owning 3D <strong>object</strong> attached as data. <a href=""><del>See Example</del> (coming soon)</a></td>
 </tr>
 </tbody>
 </table>
 
 #### Build your own
 
-Several things rely on calculations each frame. A basic one, that is critical for to work, is simply calling for the next frame to be rendered; the scene and effects need updating. Instead of constantly jacking into the requestAnimationFrame side of things, I just call that once, then iterate each of the functions contained within Mol3D.frameFunctions. The structure is quite specific:
+Several things rely on calculations each frame. A basic one, that is critical for things to work, is simply calling for the next frame to be rendered; the scene and effects need updating. Instead of constantly jacking into the requestAnimationFrame side of things, it just call that once, then iterates over each of the functions contained within Mol3D.frameFunctions. The structure is quite specific:
 
 ```
 Mol3D.frameFunctions = [
